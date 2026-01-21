@@ -15,14 +15,57 @@
 │  - Request routing                                               │
 │  - Service discovery                                             │
 │  - Health monitoring                                             │
+│  - Tenant context injection (X-Tenant-ID header)                 │
 └──┬────────┬────────┬────────┬────────┬──────────────────────────┘
    │        │        │        │        │
    ▼        ▼        ▼        ▼        ▼
 ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────────┐
 │Auth  │ │Comp  │ │Store │ │Net   │ │Monitor   │
 │8084  │ │8081  │ │8082  │ │8083  │ │8085      │
+│Tenant│ │Tenant│ │Tenant│ │Tenant│ │Tenant    │
+│Aware │ │Aware │ │Aware │ │Aware │ │Aware     │
 └──────┘ └──────┘ └──────┘ └──────┘ └──────────┘
 ```
+
+## Multi-Tenant Architecture
+
+### Tenant Isolation Flow
+
+```
+1. User Request (with Authorization: Bearer token)
+         ↓
+2. API Gateway
+   - Verifies token with Auth Service
+   - Extracts tenantId from token
+   - Adds X-Tenant-ID header to request
+         ↓
+3. Backend Service
+   - Reads X-Tenant-ID header
+   - Filters all data by tenantId
+   - Verifies resource ownership
+         ↓
+4. Response (only tenant's resources)
+```
+
+### Tenant Data Model
+
+All resources include a `tenantId` field:
+
+```d
+struct Instance {
+    string id;
+    string tenantId;  // Tenant isolation
+    string name;
+    // ... other fields
+}
+```
+
+### Security Model
+
+- **Authentication**: Token-based (JWT-style)
+- **Authorization**: Role-based (admin, user, viewer)
+- **Tenant Isolation**: Header-based (X-Tenant-ID)
+- **Resource Access**: Ownership verification before any operation
 
 ## Microservices Architecture
 
@@ -34,20 +77,25 @@
 - Service health monitoring
 - Request/response proxying
 - Platform status aggregation
+- **Token verification and tenant context extraction**
+- **Injects X-Tenant-ID header for backend services**
 
 **API Endpoints:**
 - `GET /health` - Gateway health check
 - `GET /api/v1/status` - Platform-wide status
-- `ANY /api/v1/{service}/*` - Proxy to services
+- `ANY /api/v1/{service}/*` - Proxy to services (with tenant context)
 
 ### 2. Auth Service (Port 8084)
-**Responsibility:** Authentication and authorization
+**Responsibility:** Authentication, authorization, and tenant management
 
 **Key Features:**
 - User authentication (username/password)
 - Session management with tokens
 - API key generation
 - Role-based access control (admin, user, viewer)
+- **Tenant CRUD operations**
+- **Multi-tenant user management**
+- **Token includes tenant context**
 - Token verification
 
 **API Endpoints:**

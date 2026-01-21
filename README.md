@@ -4,22 +4,43 @@ A microservices-based Infrastructure-as-a-Service (IaaS) platform built with vib
 
 ## Overview
 
-UIM IaaS Platform provides a comprehensive set of microservices for managing cloud infrastructure resources:
+UIM IaaS Platform provides a comprehensive set of microservices for managing cloud infrastructure resources with **full multi-tenancy support**:
 
 - **API Gateway** (Port 8080) - Central entry point routing requests to backend services
 - **Compute Service** (Port 8081) - Manages virtual machines and container instances
 - **Storage Service** (Port 8082) - Handles block storage volumes and object storage buckets
 - **Network Service** (Port 8083) - Manages virtual networks, subnets, and security groups
-- **Auth Service** (Port 8084) - Handles authentication, authorization, and API keys
+- **Auth Service** (Port 8084) - Handles authentication, authorization, tenant management, and API keys
 - **Monitoring Service** (Port 8085) - Collects metrics, alerts, and health check data
+
+## Key Features
+
+✅ **Multi-Tenancy** - Complete resource isolation between tenants  
+✅ **Microservices Architecture** - Independently scalable services  
+✅ **Kubernetes Native** - Ready for cloud-native deployments  
+✅ **RESTful APIs** - Standard HTTP/JSON interfaces  
+✅ **Security** - Token-based authentication with tenant isolation  
+✅ **Monitoring** - Built-in metrics and alerting
 
 ## Architecture
 
-The platform follows a microservices architecture where:
+The platform follows a microservices architecture with **comprehensive multi-tenancy support**:
 - Each service is independently deployable
 - Services communicate via REST APIs
-- The API Gateway provides a unified interface
+- The API Gateway provides a unified interface with tenant context injection
 - All services include health checks and are Kubernetes-ready
+- **Tenant isolation** at every layer - resources are automatically filtered by tenant
+- Token-based authentication with embedded tenant context
+
+### Multi-Tenancy Architecture
+
+```
+User Request → API Gateway (verifies token, adds X-Tenant-ID) → Backend Services (filter by tenant)
+```
+
+Every resource (instances, volumes, networks, etc.) is associated with a tenant. Users can only access resources belonging to their tenant.
+
+For detailed multi-tenancy documentation, see [Multi-Tenancy Guide](docs/MULTI_TENANCY.md).
 
 ## Quick Start
 
@@ -96,6 +117,38 @@ curl http://localhost:8080/api/v1/compute/instances \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
+### Multi-Tenancy
+
+**Create a Tenant:**
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/tenants \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Acme Corp","description":"Production tenant"}'
+```
+
+**Create User for Tenant:**
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/users \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username":"john",
+    "email":"john@acme.com",
+    "password":"secure123",
+    "tenantId":"tenant-uuid-here",
+    "role":"user"
+  }'
+```
+
+All resources (instances, volumes, networks) are automatically associated with your tenant when created. See [Multi-Tenancy Guide](docs/MULTI_TENANCY.md) for complete details.
+
+**Test Multi-Tenancy:**
+```bash
+./scripts/test-multitenancy.sh
+```
+This script creates two tenants, users, and resources, then verifies tenant isolation.
+
 ### Compute Service
 
 Create an instance:
@@ -169,7 +222,13 @@ uim-iaas/
 │   ├── build-all.sh
 │   ├── deploy-k8s.sh
 │   ├── undeploy-k8s.sh
-│   └── dev-run.sh
+│   ├── dev-run.sh
+│   └── test-multitenancy.sh
+├── docs/
+│   ├── QUICKSTART.md
+│   ├── ARCHITECTURE.md
+│   ├── API_EXAMPLES.md
+│   └── MULTI_TENANCY.md
 ├── docker-compose.yml
 └── README.md
 ```
@@ -201,9 +260,11 @@ uim-iaas/
 
 ### Auth Service
 - User authentication and session management
+- **Tenant management** (create, update, delete tenants)
 - API key generation and management
 - Role-based access control (admin, user, viewer)
-- Token-based authentication
+- Token-based authentication with tenant context
+- Multi-tenant user isolation
 
 ### Monitoring Service
 - Metrics collection (gauge, counter, histogram)
@@ -238,6 +299,14 @@ dub build --build=release
 cd services/compute-service
 dub test
 ```
+
+## Documentation
+
+- [Quick Start Guide](docs/QUICKSTART.md) - Get started quickly
+- [Architecture Documentation](docs/ARCHITECTURE.md) - System design details
+- [API Examples](docs/API_EXAMPLES.md) - Comprehensive API usage examples
+- [Multi-Tenancy Guide](docs/MULTI_TENANCY.md) - Complete multi-tenancy documentation
+- [Project Summary](docs/PROJECT_SUMMARY.md) - Technical overview
 
 ## License
 

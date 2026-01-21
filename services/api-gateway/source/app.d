@@ -67,12 +67,41 @@ class ApiGateway {
 
     void proxyRequest(HTTPServerRequest req, HTTPServerResponse res, string targetUrl) {
         try {
+            // Extract tenant ID from auth token by calling auth service
+            string tenantId = "default";
+            auto authHeader = "Authorization" in req.headers;
+            
+            if (authHeader) {
+                // Verify token and get tenant ID
+                try {
+                    requestHTTP(authServiceUrl ~ "/api/v1/auth/verify",
+                        (scope clientReq) {
+                            clientReq.method = HTTPMethod.GET;
+                            clientReq.headers["Authorization"] = *authHeader;
+                        },
+                        (scope clientRes) {
+                            if (clientRes.statusCode == HTTPStatus.ok) {
+                                auto verifyData = clientRes.readJson();
+                                if ("tenantId" in verifyData) {
+                                    tenantId = verifyData["tenantId"].str;
+                                }
+                            }
+                        }
+                    );
+                } catch (Exception e) {
+                    logWarn("Failed to verify token: %s", e.msg);
+                }
+            }
+            
             auto client = requestHTTP(targetUrl ~ req.requestPath,
                 (scope clientReq) {
                     clientReq.method = req.method;
                     foreach (key, value; req.headers) {
                         clientReq.headers[key] = value;
                     }
+                    // Add tenant ID header for backend services
+                    clientReq.headers["X-Tenant-ID"] = tenantId;
+                    
                     if (req.bodyReader.empty) {
                         clientReq.writeBody(cast(ubyte[])req.json.toString());
                     }

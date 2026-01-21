@@ -7,12 +7,13 @@ import std.uuid;
 import std.datetime;
 
 /**
- * Storage Service - Manages block storage volumes and object storage
+ * Storage Service - Manages block storage volumes and object storage with multi-tenancy
  */
 
 struct Volume {
     string id;
     string name;
+    string tenantId;
     string type; // block, object
     long sizeGB;
     string status; // available, in-use, creating, deleting, error
@@ -25,6 +26,7 @@ struct Volume {
 struct Bucket {
     string id;
     string name;
+    string tenantId;
     string region;
     long objectCount;
     long totalSizeBytes;
@@ -62,29 +64,44 @@ class StorageService {
 
     // Volume operations
     void listVolumes(HTTPServerRequest req, HTTPServerResponse res) {
+        auto tenantId = getTenantIdFromRequest(req);
+        
         JSONValue[] volumeList;
         foreach (volume; volumes) {
-            volumeList ~= serializeVolume(volume);
+            if (volume.tenantId == tenantId) {
+                volumeList ~= serializeVolume(volume);
+            }
         }
         res.writeJsonBody(["volumes": volumeList]);
     }
 
     void getVolume(HTTPServerRequest req, HTTPServerResponse res) {
         auto id = req.params["id"];
+        auto tenantId = getTenantIdFromRequest(req);
+        
         if (id !in volumes) {
             res.statusCode = HTTPStatus.notFound;
             res.writeJsonBody(["error": "Volume not found"]);
             return;
         }
+        
+        if (volumes[id].tenantId != tenantId) {
+            res.statusCode = HTTPStatus.forbidden;
+            res.writeJsonBody(["error": "Access denied"]);
+            return;
+        }
+        
         res.writeJsonBody(serializeVolume(volumes[id]));
     }
 
     void createVolume(HTTPServerRequest req, HTTPServerResponse res) {
         auto data = req.json;
+        auto tenantId = getTenantIdFromRequest(req);
         
         auto volume = Volume();
         volume.id = randomUUID().toString();
         volume.name = data["name"].str;
+        volume.tenantId = tenantId;
         volume.type = data.get("type", JSONValue("block")).str;
         volume.sizeGB = data["sizeGB"].integer;
         volume.status = "creating";
@@ -109,9 +126,17 @@ class StorageService {
 
     void deleteVolume(HTTPServerRequest req, HTTPServerResponse res) {
         auto id = req.params["id"];
+        auto tenantId = getTenantIdFromRequest(req);
+        
         if (id !in volumes) {
             res.statusCode = HTTPStatus.notFound;
             res.writeJsonBody(["error": "Volume not found"]);
+            return;
+        }
+        
+        if (volumes[id].tenantId != tenantId) {
+            res.statusCode = HTTPStatus.forbidden;
+            res.writeJsonBody(["error": "Access denied"]);
             return;
         }
         
@@ -184,9 +209,13 @@ class StorageService {
 
     // Bucket operations
     void listBuckets(HTTPServerRequest req, HTTPServerResponse res) {
+        auto tenantId = getTenantIdFromRequest(req);
+        
         JSONValue[] bucketList;
         foreach (bucket; buckets) {
-            bucketList ~= serializeBucket(bucket);
+            if (bucket.tenantId == tenantId) {
+                bucketList ~= serializeBucket(bucket);
+            }
         }
         res.writeJsonBody(["buckets": bucketList]);
     }
@@ -203,10 +232,12 @@ class StorageService {
 
     void createBucket(HTTPServerRequest req, HTTPServerResponse res) {
         auto data = req.json;
+        auto tenantId = getTenantIdFromRequest(req);
         
         auto bucket = Bucket();
         bucket.id = randomUUID().toString();
         bucket.name = data["name"].str;
+        bucket.tenantId = tenantId;
         bucket.region = data.get("region", JSONValue("default")).str;
         bucket.objectCount = 0;
         bucket.totalSizeBytes = 0;
@@ -239,10 +270,18 @@ class StorageService {
         res.writeVoidBody();
     }
 
+    string getTenantIdFromRequest(HTTPServerRequest req) {
+        if ("X-Tenant-ID" in req.headers) {
+            return req.headers["X-Tenant-ID"];
+        }
+        return "default";
+    }
+
     JSONValue serializeVolume(Volume volume) {
         return JSONValue([
             "id": volume.id,
             "name": volume.name,
+            "tenantId": volume.tenantId,
             "type": volume.type,
             "sizeGB": volume.sizeGB,
             "status": volume.status,
@@ -257,6 +296,7 @@ class StorageService {
         return JSONValue([
             "id": bucket.id,
             "name": bucket.name,
+            "tenantId": bucket.tenantId,
             "region": bucket.region,
             "objectCount": bucket.objectCount,
             "totalSizeBytes": bucket.totalSizeBytes,

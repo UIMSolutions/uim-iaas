@@ -7,12 +7,13 @@ import std.uuid;
 import std.datetime;
 
 /**
- * Network Service - Manages virtual networks, subnets, and security groups
+ * Network Service - Manages virtual networks, subnets, and security groups with multi-tenancy
  */
 
 struct Network {
     string id;
     string name;
+    string tenantId;
     string cidr;
     string status;
     long createdAt;
@@ -23,6 +24,7 @@ struct Network {
 struct Subnet {
     string id;
     string name;
+    string tenantId;
     string networkId;
     string cidr;
     string gateway;
@@ -35,6 +37,7 @@ struct Subnet {
 struct SecurityGroup {
     string id;
     string name;
+    string tenantId;
     string description;
     Rule[] rules;
     long createdAt;
@@ -85,9 +88,13 @@ class NetworkService {
 
     // Network operations
     void listNetworks(HTTPServerRequest req, HTTPServerResponse res) {
+        auto tenantId = getTenantIdFromRequest(req);
+        
         JSONValue[] networkList;
         foreach (network; networks) {
-            networkList ~= serializeNetwork(network);
+            if (network.tenantId == tenantId) {
+                networkList ~= serializeNetwork(network);
+            }
         }
         res.writeJsonBody(["networks": networkList]);
     }
@@ -104,10 +111,12 @@ class NetworkService {
 
     void createNetwork(HTTPServerRequest req, HTTPServerResponse res) {
         auto data = req.json;
+        auto tenantId = getTenantIdFromRequest(req);
         
         auto network = Network();
         network.id = randomUUID().toString();
         network.name = data["name"].str;
+        network.tenantId = tenantId;
         network.cidr = data["cidr"].str;
         network.status = "active";
         network.createdAt = Clock.currTime().toUnixTime();
@@ -144,9 +153,13 @@ class NetworkService {
 
     // Subnet operations
     void listSubnets(HTTPServerRequest req, HTTPServerResponse res) {
+        auto tenantId = getTenantIdFromRequest(req);
+        
         JSONValue[] subnetList;
         foreach (subnet; subnets) {
-            subnetList ~= serializeSubnet(subnet);
+            if (subnet.tenantId == tenantId) {
+                subnetList ~= serializeSubnet(subnet);
+            }
         }
         res.writeJsonBody(["subnets": subnetList]);
     }
@@ -163,10 +176,12 @@ class NetworkService {
 
     void createSubnet(HTTPServerRequest req, HTTPServerResponse res) {
         auto data = req.json;
+        auto tenantId = getTenantIdFromRequest(req);
         
         auto subnet = Subnet();
         subnet.id = randomUUID().toString();
         subnet.name = data["name"].str;
+        subnet.tenantId = tenantId;
         subnet.networkId = data["networkId"].str;
         subnet.cidr = data["cidr"].str;
         subnet.gateway = data["gateway"].str;
@@ -201,9 +216,13 @@ class NetworkService {
 
     // Security group operations
     void listSecurityGroups(HTTPServerRequest req, HTTPServerResponse res) {
+        auto tenantId = getTenantIdFromRequest(req);
+        
         JSONValue[] sgList;
         foreach (sg; securityGroups) {
-            sgList ~= serializeSecurityGroup(sg);
+            if (sg.tenantId == tenantId) {
+                sgList ~= serializeSecurityGroup(sg);
+            }
         }
         res.writeJsonBody(["securityGroups": sgList]);
     }
@@ -220,10 +239,12 @@ class NetworkService {
 
     void createSecurityGroup(HTTPServerRequest req, HTTPServerResponse res) {
         auto data = req.json;
+        auto tenantId = getTenantIdFromRequest(req);
         
         auto sg = SecurityGroup();
         sg.id = randomUUID().toString();
         sg.name = data["name"].str;
+        sg.tenantId = tenantId;
         sg.description = data.get("description", JSONValue("")).str;
         sg.createdAt = Clock.currTime().toUnixTime();
         sg.updatedAt = sg.createdAt;
@@ -304,10 +325,18 @@ class NetworkService {
         res.writeVoidBody();
     }
 
+    string getTenantIdFromRequest(HTTPServerRequest req) {
+        if ("X-Tenant-ID" in req.headers) {
+            return req.headers["X-Tenant-ID"];
+        }
+        return "default";
+    }
+
     JSONValue serializeNetwork(Network network) {
         return JSONValue([
             "id": network.id,
             "name": network.name,
+            "tenantId": network.tenantId,
             "cidr": network.cidr,
             "status": network.status,
             "createdAt": network.createdAt,
@@ -320,6 +349,7 @@ class NetworkService {
         return JSONValue([
             "id": subnet.id,
             "name": subnet.name,
+            "tenantId": subnet.tenantId,
             "networkId": subnet.networkId,
             "cidr": subnet.cidr,
             "gateway": subnet.gateway,
@@ -339,6 +369,7 @@ class NetworkService {
         return JSONValue([
             "id": sg.id,
             "name": sg.name,
+            "tenantId": sg.tenantId,
             "description": sg.description,
             "rules": JSONValue(rulesList),
             "createdAt": sg.createdAt,

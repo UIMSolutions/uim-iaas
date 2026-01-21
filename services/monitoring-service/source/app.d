@@ -2,17 +2,17 @@ module app;
 
 import vibe.vibe;
 import std.stdio;
-import std.json;
 import std.datetime;
 import std.algorithm;
 import std.array;
 
 /**
- * Monitoring Service - Collects and provides metrics and health data
+ * Monitoring Service - Collects and provides metrics and health data with multi-tenancy
  */
 
 struct Metric {
     string name;
+    string tenantId;
     string type; // gauge, counter, histogram
     double value;
     string[string] labels;
@@ -22,6 +22,7 @@ struct Metric {
 struct Alert {
     string id;
     string name;
+    string tenantId;
     string severity; // info, warning, critical
     string message;
     string source;
@@ -32,6 +33,7 @@ struct Alert {
 
 struct HealthCheck {
     string service;
+    string tenantId;
     string status; // healthy, degraded, unhealthy
     long responseTime;
     string message;
@@ -68,6 +70,8 @@ class MonitoringService {
     }
 
     void getMetrics(HTTPServerRequest req, HTTPServerResponse res) {
+        auto tenantId = getTenantIdFromRequest(req);
+        
         // Filter by time range if provided
         long startTime = 0;
         long endTime = Clock.currTime().toUnixTime();
@@ -81,28 +85,34 @@ class MonitoringService {
             endTime = req.query["end"].to!long;
         }
         
-        auto filtered = metrics.filter!(m => m.timestamp >= startTime && m.timestamp <= endTime);
+        auto filtered = metrics.filter!(m => 
+            m.tenantId == tenantId && 
+            m.timestamp >= startTime && 
+            m.timestamp <= endTime
+        );
         
-        JSONValue[] metricList;
+        Json[] metricList;
         foreach (metric; filtered) {
             metricList ~= serializeMetric(metric);
         }
         
-        res.writeJsonBody(["metrics": metricList, "count": metricList.length]);
+        res.writeJsonBody(["metrics": Json(metricList), "count": Json(metricList.length)]);
     }
 
     void recordMetric(HTTPServerRequest req, HTTPServerResponse res) {
         auto data = req.json;
+        auto tenantId = getTenantIdFromRequest(req);
         
         auto metric = Metric();
-        metric.name = data["name"].str;
-        metric.type = data.get("type", JSONValue("gauge")).str;
-        metric.value = data["value"].floating;
+        metric.name = data["name"].get!string;
+        metric.tenantId = tenantId;
+        metric.type = ("type" in data) ? data["type"].get!string : "gauge";
+        metric.value = data["value"].get!double;
         metric.timestamp = Clock.currTime().toUnixTime();
         
         if ("labels" in data) {
-            foreach (string key, value; data["labels"].object) {
-                metric.labels[key] = value.str;
+            foreach (string key, ref value; data["labels"].byKeyValue) {
+                metric.labels[key] = value.get!string;
             }
         }
         
@@ -119,10 +129,11 @@ class MonitoringService {
 
     void getMetricsByName(HTTPServerRequest req, HTTPServerResponse res) {
         auto name = req.params["name"];
+        auto tenantId = getTenantIdFromRequest(req);
         
-        auto filtered = metrics.filter!(m => m.name == name);
+        auto filtered = metrics.filter!(m => m.name == name && m.tenantId == tenantId);
         
-        JSONValue[] metricList;
+        Json[] metricList;
         foreach (metric; filtered) {
             metricList ~= serializeMetric(metric);
         }
@@ -142,22 +153,23 @@ class MonitoringService {
             auto avg = sum / metricList.length;
             
             res.writeJsonBody([
-                "name": name,
-                "metrics": metricList,
-                "count": metricList.length,
-                "aggregations": [
-                    "min": min,
-                    "max": max,
-                    "avg": avg,
-                    "sum": sum
-                ]
+                "name": Json(name),
+                "metrics": Json(metricList),
+                "count": Json(metricList.length),
+                "aggregations": Json([
+                    "min": Json(min),
+                    "max": Json(max),
+                    "avg": Json(avg),
+                    "sum": Json(sum)
+                ])
             ]);
         } else {
-            res.writeJsonBody(["name": name, "metrics": metricList, "count": 0]);
+            res.writeJsonBody(["name": Json(name), "metrics": Json(metricList), "count": Json(0)]);
         }
     }
 
     void listAlerts(HTTPServerRequest req, HTTPServerResponse res) {
+        auto tenantId = getTenantIdFromRequest(req);
         bool activeOnly = false;
         if ("active" in req.query && req.query["active"] == "true") {
             activeOnly = true;
@@ -165,19 +177,19 @@ class MonitoringService {
         
         JSONValue[] alertList;
         foreach (alert; alerts) {
-            if (!activeOnly || alert.active) {
+            if (alert.tenantId == tenantId && (!activeOnly || alert.active)) {
                 alertList ~= serializeAlert(alert);
             }
         }
         
-        res.writeJsonBody(["alerts": alertList]);
+        res.writeJsonBody(["alerts": JSONValue(alertList)]);
     }
 
     void getAlert(HTTPServerRequest req, HTTPServerResponse res) {
         auto id = req.params["id"];
         if (id !in alerts) {
             res.statusCode = HTTPStatus.notFound;
-            res.writeJsonBody(["error": "Alert not found"]);
+            res.writeJsonBody(["error": JSONValue("Alert not found")]);
             return;
         }
         
@@ -186,14 +198,16 @@ class MonitoringService {
 
     void createAlert(HTTPServerRequest req, HTTPServerResponse res) {
         auto data = req.json;
+        auto tenantId = getTenantIdFromRequest(req);
         
         import std.uuid;
         auto alert = Alert();
         alert.id = randomUUID().toString();
-        alert.name = data["name"].str;
-        alert.severity = data.get("severity", JSONValue("warning")).str;
-        alert.message = data["message"].str;
-        alert.source = data.get("source", JSONValue("unknown")).str;
+        alert.name = data["name"].get!string;
+        alert.tenantId = tenantId;
+        alert.severity = ("severity" in data) ? data["severity"].get!string : "warning";
+        alert.message = data["message"].get!string;
+        alert.source = ("source" in data) ? data["source"].get!string : "unknown";
         alert.active = true;
         alert.triggeredAt = Clock.currTime().toUnixTime();
         alert.resolvedAt = 0;
@@ -219,22 +233,28 @@ class MonitoringService {
     }
 
     void listHealthChecks(HTTPServerRequest req, HTTPServerResponse res) {
+        auto tenantId = getTenantIdFromRequest(req);
+        
         JSONValue[] healthList;
         foreach (health; healthChecks) {
-            healthList ~= serializeHealthCheck(health);
+            if (health.tenantId == tenantId) {
+                healthList ~= serializeHealthCheck(health);
+            }
         }
         
-        res.writeJsonBody(["healthChecks": healthList]);
+        res.writeJsonBody(["healthChecks": JSONValue(healthList)]);
     }
 
     void recordHealthCheck(HTTPServerRequest req, HTTPServerResponse res) {
         auto data = req.json;
+        auto tenantId = getTenantIdFromRequest(req);
         
         auto health = HealthCheck();
-        health.service = data["service"].str;
-        health.status = data["status"].str;
-        health.responseTime = data.get("responseTime", JSONValue(0)).integer;
-        health.message = data.get("message", JSONValue("")).str;
+        health.service = data["service"].get!string;
+        health.tenantId = tenantId;
+        health.status = data["status"].get!string;
+        health.responseTime = ("responseTime" in data) ? data["responseTime"].get!long : 0;
+        health.message = ("message" in data) ? data["message"].get!string : "";
         health.timestamp = Clock.currTime().toUnixTime();
         
         healthChecks[health.service] = health;
@@ -244,13 +264,15 @@ class MonitoringService {
     }
 
     void getDashboard(HTTPServerRequest req, HTTPServerResponse res) {
-        // Get active alerts
+        auto tenantId = getTenantIdFromRequest(req);
+        
+        // Get active alerts for this tenant
         int criticalCount = 0;
         int warningCount = 0;
         int infoCount = 0;
         
         foreach (alert; alerts) {
-            if (alert.active) {
+            if (alert.tenantId == tenantId && alert.active) {
                 switch (alert.severity) {
                     case "critical": criticalCount++; break;
                     case "warning": warningCount++; break;
@@ -260,82 +282,94 @@ class MonitoringService {
             }
         }
         
-        // Get service health summary
+        // Get service health summary for this tenant
         int healthyCount = 0;
         int degradedCount = 0;
         int unhealthyCount = 0;
         
         foreach (health; healthChecks) {
-            switch (health.status) {
-                case "healthy": healthyCount++; break;
-                case "degraded": degradedCount++; break;
-                case "unhealthy": unhealthyCount++; break;
-                default: break;
+            if (health.tenantId == tenantId) {
+                switch (health.status) {
+                    case "healthy": healthyCount++; break;
+                    case "degraded": degradedCount++; break;
+                    case "unhealthy": unhealthyCount++; break;
+                    default: break;
+                }
             }
         }
         
-        // Get recent metrics count
+        // Get recent metrics count for this tenant
         auto recentTime = Clock.currTime().toUnixTime() - 3600; // Last hour
-        auto recentMetrics = metrics.filter!(m => m.timestamp >= recentTime).array.length;
+        auto recentMetrics = metrics.filter!(m => m.tenantId == tenantId && m.timestamp >= recentTime).array.length;
         
         res.writeJsonBody([
-            "dashboard": [
-                "timestamp": Clock.currTime().toUnixTime(),
-                "alerts": [
-                    "critical": criticalCount,
-                    "warning": warningCount,
-                    "info": infoCount,
-                    "total": criticalCount + warningCount + infoCount
-                ],
-                "services": [
-                    "healthy": healthyCount,
-                    "degraded": degradedCount,
-                    "unhealthy": unhealthyCount,
-                    "total": healthyCount + degradedCount + unhealthyCount
-                ],
-                "metrics": [
-                    "total": metrics.length,
-                    "lastHour": recentMetrics
-                ]
-            ]
+            "dashboard": JSONValue([
+                "timestamp": JSONValue(Clock.currTime().toUnixTime()),
+                "alerts": JSONValue([
+                    "critical": JSONValue(criticalCount),
+                    "warning": JSONValue(warningCount),
+                    "info": JSONValue(infoCount),
+                    "total": JSONValue(criticalCount + warningCount + infoCount)
+                ]),
+                "services": JSONValue([
+                    "healthy": JSONValue(healthyCount),
+                    "degraded": JSONValue(degradedCount),
+                    "unhealthy": JSONValue(unhealthyCount),
+                    "total": JSONValue(healthyCount + degradedCount + unhealthyCount)
+                ]),
+                "metrics": JSONValue([
+                    "total": JSONValue(metrics.length),
+                    "lastHour": JSONValue(recentMetrics)
+                ])
+            ])
         ]);
+    }
+
+    string getTenantIdFromRequest(HTTPServerRequest req) {
+        if ("X-Tenant-ID" in req.headers) {
+            return req.headers["X-Tenant-ID"];
+        }
+        return "default";
     }
 
     JSONValue serializeMetric(Metric metric) {
         JSONValue labels = JSONValue.emptyObject;
         foreach (key, value; metric.labels) {
-            labels[key] = value;
+            labels[key] = JSONValue(value);
         }
         
         return JSONValue([
-            "name": metric.name,
-            "type": metric.type,
-            "value": metric.value,
+            "name": JSONValue(metric.name),
+            "tenantId": JSONValue(metric.tenantId),
+            "type": JSONValue(metric.type),
+            "value": JSONValue(metric.value),
             "labels": labels,
-            "timestamp": metric.timestamp
+            "timestamp": JSONValue(metric.timestamp)
         ]);
     }
 
     JSONValue serializeAlert(Alert alert) {
         return JSONValue([
-            "id": alert.id,
-            "name": alert.name,
-            "severity": alert.severity,
-            "message": alert.message,
-            "source": alert.source,
-            "active": alert.active,
-            "triggeredAt": alert.triggeredAt,
-            "resolvedAt": alert.resolvedAt
+            "id": JSONValue(alert.id),
+            "name": JSONValue(alert.name),
+            "tenantId": JSONValue(alert.tenantId),
+            "severity": JSONValue(alert.severity),
+            "message": JSONValue(alert.message),
+            "source": JSONValue(alert.source),
+            "active": JSONValue(alert.active),
+            "triggeredAt": JSONValue(alert.triggeredAt),
+            "resolvedAt": JSONValue(alert.resolvedAt)
         ]);
     }
 
     JSONValue serializeHealthCheck(HealthCheck health) {
         return JSONValue([
-            "service": health.service,
-            "status": health.status,
-            "responseTime": health.responseTime,
-            "message": health.message,
-            "timestamp": health.timestamp
+            "service": JSONValue(health.service),
+            "tenantId": JSONValue(health.tenantId),
+            "status": JSONValue(health.status),
+            "responseTime": JSONValue(health.responseTime),
+            "message": JSONValue(health.message),
+            "timestamp": JSONValue(health.timestamp)
         ]);
     }
 }

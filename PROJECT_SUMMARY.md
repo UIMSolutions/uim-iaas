@@ -2,48 +2,56 @@
 
 ## 🎯 What Was Built
 
-A complete **microservices-based Infrastructure-as-a-Service (IaaS) platform** using:
+A complete **microservices-based Infrastructure-as-a-Service (IaaS) platform** with **full multi-tenancy support** using:
 - **Language:** D (dlang)
 - **Framework:** vibe.d
 - **Deployment:** Kubernetes-ready with Docker containers
+- **Architecture:** Multi-tenant with resource isolation
 
-## 📦 6 Microservices Created
+## 📦 6 Microservices Created (All Tenant-Aware)
 
 ### 1. **API Gateway** (Port 8080)
 - Entry point for all requests
 - Routes to backend services
 - Health monitoring
 - Service discovery
+- **Tenant context injection** (adds X-Tenant-ID header)
 
 ### 2. **Auth Service** (Port 8084)
 - User authentication
 - Token management
 - API keys
 - RBAC (admin, user, viewer)
+- **Tenant CRUD operations**
+- **Multi-tenant user management**
 
 ### 3. **Compute Service** (Port 8081)
 - VM/container management
 - Instance lifecycle (create, start, stop)
 - 4 flavors: small, medium, large, xlarge
 - Metadata support
+- **Tenant-isolated instances**
 
 ### 4. **Storage Service** (Port 8082)
 - Block volumes
 - Object storage buckets
 - Attach/detach volumes
 - Snapshots
+- **Tenant-isolated storage**
 
 ### 5. **Network Service** (Port 8083)
 - Virtual networks (VPC)
 - Subnets with DHCP
 - Security groups
 - Firewall rules
+- **Tenant-isolated networks**
 
 ### 6. **Monitoring Service** (Port 8085)
 - Metrics collection
 - Alerting (critical, warning, info)
 - Dashboard
 - Health checks
+- **Tenant-scoped monitoring**
 
 ## 📁 Project Structure (27 Files Created)
 
@@ -108,25 +116,50 @@ make docker-build  # Build images
 make k8s-deploy    # Deploy to K8s
 ```
 
-### Test It
+### Test It (Multi-Tenant)
 
 ```bash
 # 1. Check status
 curl http://localhost:8080/api/v1/status
 
-# 2. Login
-curl -X POST http://localhost:8080/api/v1/auth/login \
+# 2. Login as admin
+TOKEN=$(curl -X POST http://localhost:8080/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"admin123"}'
+  -d '{"username":"admin","password":"admin123"}' | jq -r '.token')
 
-# 3. Create a VM
-curl -X POST http://localhost:8080/api/v1/compute/instances \
-  -H "Authorization: Bearer TOKEN" \
+# 3. Create a tenant
+TENANT_ID=$(curl -X POST http://localhost:8080/api/v1/auth/tenants \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"test","type":"vm","flavor":"small","imageId":"ubuntu"}'
+  -d '{"name":"MyCompany","description":"Production tenant"}' | jq -r '.id')
+
+# 4. Create user in tenant
+curl -X POST http://localhost:8080/api/v1/auth/users \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"username\":\"user1\",\"email\":\"user1@company.com\",\"password\":\"secure123\",\"tenantId\":\"$TENANT_ID\",\"role\":\"admin\"}"
+
+# 5. Login as tenant user
+USER_TOKEN=$(curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"user1","password":"secure123"}' | jq -r '.token')
+
+# 6. Create tenant-isolated VM
+curl -X POST http://localhost:8080/api/v1/compute/instances \
+  -H "Authorization: Bearer $USER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"app-server","type":"vm","flavor":"medium","imageId":"ubuntu-22.04"}'
 ```
 
 ## ✨ Key Features
+
+### Multi-Tenancy (NEW!)
+- ✅ Complete resource isolation between tenants
+- ✅ Automatic tenant context propagation
+- ✅ Header-based tenant identification (X-Tenant-ID)
+- ✅ Tenant management (CRUD operations)
+- ✅ Cross-tenant access prevention
+- ✅ Tenant-scoped data filtering
 
 ### Production Ready
 - ✅ Health checks for all services
@@ -143,12 +176,13 @@ curl -X POST http://localhost:8080/api/v1/compute/instances \
 - ✅ Helper scripts
 
 ### IaaS Capabilities
-- ✅ VM/container management
-- ✅ Block & object storage
-- ✅ Virtual networking
+- ✅ VM/container management (tenant-isolated)
+- ✅ Block & object storage (tenant-isolated)
+- ✅ Virtual networking (tenant-isolated)
 - ✅ Security groups
-- ✅ Monitoring & alerting
+- ✅ Monitoring & alerting (tenant-scoped)
 - ✅ User authentication
+- ✅ Multi-tenant architecture
 
 ## 📊 Service Endpoints
 
@@ -167,15 +201,61 @@ curl -X POST http://localhost:8080/api/v1/compute/instances \
 - **Containerization:** Docker
 - **Orchestration:** Kubernetes
 - **API:** REST/JSON
-- **Auth:** Bearer tokens
+- **Auth:** Bearer tokens (with tenant context)
+- **Multi-Tenancy:** Header-based (X-Tenant-ID)
 - **Compiler:** LDC2
+
+## 🏢 Multi-Tenancy Architecture
+
+### How It Works
+
+```
+┌─────────────┐
+│   User      │
+│  (Tenant A) │
+└──────┬──────┘
+       │ Authorization: Bearer token
+       ▼
+┌─────────────────────┐
+│   API Gateway       │
+│ 1. Verify token     │
+│ 2. Extract tenantId │
+│ 3. Add X-Tenant-ID  │
+└──────┬──────────────┘
+       │ X-Tenant-ID: tenant-a
+       ▼
+┌─────────────────────┐
+│  Backend Service    │
+│ 1. Read tenant ID   │
+│ 2. Filter by tenant │
+│ 3. Verify ownership │
+└─────────────────────┘
+```
+
+### Tenant Isolation
+
+Every resource includes a `tenantId` field:
+- **Instances**: Virtual machines scoped to tenant
+- **Volumes**: Storage resources isolated per tenant
+- **Networks**: Virtual networks private to tenant
+- **Metrics**: Monitoring data filtered by tenant
+- **Users**: Can only access their tenant's resources
+
+### Security Model
+
+✅ **Authentication**: Token-based with tenant context  
+✅ **Authorization**: Role-based within tenant  
+✅ **Isolation**: Automatic filtering by tenant ID  
+✅ **Verification**: Ownership checked on all operations  
+✅ **Prevention**: Cross-tenant access denied automatically
 
 ## 📖 Documentation Files
 
 1. **README.md** - Main overview and setup
 2. **docs/QUICKSTART.md** - Getting started guide
-3. **docs/ARCHITECTURE.md** - Technical architecture
-4. **docs/API_EXAMPLES.md** - API usage examples
+3. **docs/ARCHITECTURE.md** - Technical architecture (includes multi-tenancy design)
+4. **docs/API_EXAMPLES.md** - API usage examples (with multi-tenant examples)
+5. **docs/MULTI_TENANCY.md** - Comprehensive multi-tenancy guide (NEW!)
 
 ## 🎓 What You Can Do
 
@@ -191,11 +271,14 @@ curl -X POST http://localhost:8080/api/v1/compute/instances \
 - Practice API design
 
 ### Extension
-- Add database persistence
-- Implement billing system
-- Add web UI
+- Add database persistence (PostgreSQL/MongoDB)
+- Implement billing system (per-tenant usage tracking)
+- Add web UI dashboard
 - Create CLI tool
 - Integrate with CI/CD
+- Add resource quotas per tenant
+- Implement tenant-specific rate limiting
+- Add audit logging per tenant
 
 ## 🔐 Security Notes
 
