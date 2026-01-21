@@ -1,0 +1,37 @@
+# .gitignore for UIM IaaS Platform
+
+# DUB
+.dub/
+dub.selections.json
+*.a
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Build outputs
+bin/
+lib/
+*.log
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Docker
+*.tar
+*.tar.gz
+
+# Kubernetes
+*.kubeconfig
+
+# Temporary files
+tmp/
+temp/
+*.tmp

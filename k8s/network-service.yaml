@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: network-service
+  namespace: uim-iaas
+  labels:
+    app: network-service
+    tier: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: network-service
+  template:
+    metadata:
+      labels:
+        app: network-service
+        tier: backend
+    spec:
+      containers:
+      - name: network-service
+        image: uim-iaas/network-service:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8083
+          name: http
+        env:
+        - name: PORT
+          value: "8083"
+        envFrom:
+        - configMapRef:
+            name: uim-iaas-config
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8083
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8083
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: network-service
+  namespace: uim-iaas
+  labels:
+    app: network-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8083
+    targetPort: 8083
+    protocol: TCP
+    name: http
+  selector:
+    app: network-service

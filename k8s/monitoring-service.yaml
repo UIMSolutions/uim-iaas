@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: monitoring-service
+  namespace: uim-iaas
+  labels:
+    app: monitoring-service
+    tier: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: monitoring-service
+  template:
+    metadata:
+      labels:
+        app: monitoring-service
+        tier: backend
+    spec:
+      containers:
+      - name: monitoring-service
+        image: uim-iaas/monitoring-service:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8085
+          name: http
+        env:
+        - name: PORT
+          value: "8085"
+        envFrom:
+        - configMapRef:
+            name: uim-iaas-config
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8085
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8085
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: monitoring-service
+  namespace: uim-iaas
+  labels:
+    app: monitoring-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8085
+    targetPort: 8085
+    protocol: TCP
+    name: http
+  selector:
+    app: monitoring-service

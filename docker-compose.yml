@@ -1,0 +1,108 @@
+version: '3.8'
+
+services:
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    ports:
+      - "8084:8084"
+    environment:
+      - LOG_LEVEL=info
+    networks:
+      - uim-iaas-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  compute-service:
+    build:
+      context: ./services/compute-service
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      - LOG_LEVEL=info
+    networks:
+      - uim-iaas-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  storage-service:
+    build:
+      context: ./services/storage-service
+      dockerfile: Dockerfile
+    ports:
+      - "8082:8082"
+    environment:
+      - LOG_LEVEL=info
+    networks:
+      - uim-iaas-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  network-service:
+    build:
+      context: ./services/network-service
+      dockerfile: Dockerfile
+    ports:
+      - "8083:8083"
+    environment:
+      - LOG_LEVEL=info
+    networks:
+      - uim-iaas-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  monitoring-service:
+    build:
+      context: ./services/monitoring-service
+      dockerfile: Dockerfile
+    ports:
+      - "8085:8085"
+    environment:
+      - LOG_LEVEL=info
+    networks:
+      - uim-iaas-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8085/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - LOG_LEVEL=info
+    networks:
+      - uim-iaas-network
+    depends_on:
+      - auth-service
+      - compute-service
+      - storage-service
+      - network-service
+      - monitoring-service
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+networks:
+  uim-iaas-network:
+    driver: bridge

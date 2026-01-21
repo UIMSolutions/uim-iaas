@@ -1,0 +1,12 @@
+name "compute-service"
+description "Compute Service for UIM IaaS Platform"
+authors "Ozan Nurettin Süel"
+copyright "Copyright © 2026, UI Manufaktur"
+license "Apache-2.0"
+
+targetType "executable"
+targetName "compute-service"
+
+dependency "vibe-d" version="~>0.10.3"
+
+mainSourceFile "source/app.d"
