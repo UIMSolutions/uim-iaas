@@ -16,7 +16,7 @@ dependency "vibe-d" version="~>0.10.3"
 dependency "dyaml" version="~>0.10.0"
 
 // uim dependencies
-dependency ":cdm" version="*"
+dependency ":base" version="*"
 dependency ":compilers" version="*"
 dependency ":core" version="*"
 dependency ":css" version="*"

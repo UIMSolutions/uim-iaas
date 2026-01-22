@@ -175,21 +175,21 @@ class MonitoringService {
             activeOnly = true;
         }
         
-        JSONValue[] alertList;
+        Json[] alertList;
         foreach (alert; alerts) {
             if (alert.tenantId == tenantId && (!activeOnly || alert.active)) {
                 alertList ~= serializeAlert(alert);
             }
         }
         
-        res.writeJsonBody(["alerts": JSONValue(alertList)]);
+        res.writeJsonBody(["alerts": Json(alertList)]);
     }
 
     void getAlert(HTTPServerRequest req, HTTPServerResponse res) {
         auto id = req.params["id"];
         if (id !in alerts) {
             res.statusCode = HTTPStatus.notFound;
-            res.writeJsonBody(["error": JSONValue("Alert not found")]);
+            res.writeJsonBody(["error": Json("Alert not found")]);
             return;
         }
         
@@ -235,14 +235,14 @@ class MonitoringService {
     void listHealthChecks(HTTPServerRequest req, HTTPServerResponse res) {
         auto tenantId = getTenantIdFromRequest(req);
         
-        JSONValue[] healthList;
+        Json[] healthList;
         foreach (health; healthChecks) {
             if (health.tenantId == tenantId) {
                 healthList ~= serializeHealthCheck(health);
             }
         }
         
-        res.writeJsonBody(["healthChecks": JSONValue(healthList)]);
+        res.writeJsonBody(["healthChecks": Json(healthList)]);
     }
 
     void recordHealthCheck(HTTPServerRequest req, HTTPServerResponse res) {
@@ -303,23 +303,23 @@ class MonitoringService {
         auto recentMetrics = metrics.filter!(m => m.tenantId == tenantId && m.timestamp >= recentTime).array.length;
         
         res.writeJsonBody([
-            "dashboard": JSONValue([
-                "timestamp": JSONValue(Clock.currTime().toUnixTime()),
-                "alerts": JSONValue([
-                    "critical": JSONValue(criticalCount),
-                    "warning": JSONValue(warningCount),
-                    "info": JSONValue(infoCount),
-                    "total": JSONValue(criticalCount + warningCount + infoCount)
+            "dashboard": Json([
+                "timestamp": Json(Clock.currTime().toUnixTime()),
+                "alerts": Json([
+                    "critical": Json(criticalCount),
+                    "warning": Json(warningCount),
+                    "info": Json(infoCount),
+                    "total": Json(criticalCount + warningCount + infoCount)
                 ]),
-                "services": JSONValue([
-                    "healthy": JSONValue(healthyCount),
-                    "degraded": JSONValue(degradedCount),
-                    "unhealthy": JSONValue(unhealthyCount),
-                    "total": JSONValue(healthyCount + degradedCount + unhealthyCount)
+                "services": Json([
+                    "healthy": Json(healthyCount),
+                    "degraded": Json(degradedCount),
+                    "unhealthy": Json(unhealthyCount),
+                    "total": Json(healthyCount + degradedCount + unhealthyCount)
                 ]),
-                "metrics": JSONValue([
-                    "total": JSONValue(metrics.length),
-                    "lastHour": JSONValue(recentMetrics)
+                "metrics": Json([
+                    "total": Json(metrics.length),
+                    "lastHour": Json(recentMetrics)
                 ])
             ])
         ]);
@@ -332,44 +332,44 @@ class MonitoringService {
         return "default";
     }
 
-    JSONValue serializeMetric(Metric metric) {
-        JSONValue labels = JSONValue.emptyObject;
+    Json serializeMetric(Metric metric) {
+        Json labels = Json.emptyObject;
         foreach (key, value; metric.labels) {
-            labels[key] = JSONValue(value);
+            labels[key] = Json(value);
         }
         
-        return JSONValue([
-            "name": JSONValue(metric.name),
-            "tenantId": JSONValue(metric.tenantId),
-            "type": JSONValue(metric.type),
-            "value": JSONValue(metric.value),
+        return Json([
+            "name": Json(metric.name),
+            "tenantId": Json(metric.tenantId),
+            "type": Json(metric.type),
+            "value": Json(metric.value),
             "labels": labels,
-            "timestamp": JSONValue(metric.timestamp)
+            "timestamp": Json(metric.timestamp)
         ]);
     }
 
-    JSONValue serializeAlert(Alert alert) {
-        return JSONValue([
-            "id": JSONValue(alert.id),
-            "name": JSONValue(alert.name),
-            "tenantId": JSONValue(alert.tenantId),
-            "severity": JSONValue(alert.severity),
-            "message": JSONValue(alert.message),
-            "source": JSONValue(alert.source),
-            "active": JSONValue(alert.active),
-            "triggeredAt": JSONValue(alert.triggeredAt),
-            "resolvedAt": JSONValue(alert.resolvedAt)
+    Json serializeAlert(Alert alert) {
+        return Json([
+            "id": Json(alert.id),
+            "name": Json(alert.name),
+            "tenantId": Json(alert.tenantId),
+            "severity": Json(alert.severity),
+            "message": Json(alert.message),
+            "source": Json(alert.source),
+            "active": Json(alert.active),
+            "triggeredAt": Json(alert.triggeredAt),
+            "resolvedAt": Json(alert.resolvedAt)
         ]);
     }
 
-    JSONValue serializeHealthCheck(HealthCheck health) {
-        return JSONValue([
-            "service": JSONValue(health.service),
-            "tenantId": JSONValue(health.tenantId),
-            "status": JSONValue(health.status),
-            "responseTime": JSONValue(health.responseTime),
-            "message": JSONValue(health.message),
-            "timestamp": JSONValue(health.timestamp)
+    Json serializeHealthCheck(HealthCheck health) {
+        return Json([
+            "service": Json(health.service),
+            "tenantId": Json(health.tenantId),
+            "status": Json(health.status),
+            "responseTime": Json(health.responseTime),
+            "message": Json(health.message),
+            "timestamp": Json(health.timestamp)
         ]);
     }
 }

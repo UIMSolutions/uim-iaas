@@ -2,7 +2,6 @@ module app;
 
 import vibe.vibe;
 import std.stdio;
-import std.json;
 import std.uuid;
 import std.datetime;
 
@@ -10,20 +9,7 @@ import std.datetime;
  * Compute Service - Manages virtual machines and container instances with multi-tenancy
  */
 
-struct Instance {
-    string id;
-    string name;
-    string tenantId;
-    string type; // vm, container
-    string flavor; // small, medium, large
-    string status; // creating, running, stopped, error
-    string imageId;
-    string[] networkIds;
-    string[] volumeIds;
-    long createdAt;
-    long updatedAt;
-    JSONValue metadata;
-}
+
 
 class ComputeService {
     private Instance[string] instances;
@@ -69,39 +55,44 @@ class ComputeService {
         
         // Verify tenant ownership
         if (instances[id].tenantId != tenantId) {
-        auto tenantId = getTenantIdFromRequest(req);
-        
-        auto instance = Instance();
-        instance.id = randomUUID().toString();
-        instance.name = data["name"].str;
-        instance.tenantId = tenantId
+            res.statusCode = HTTPStatus.forbidden;
+            res.writeJsonBody(["error": "Access denied"]);
+            return;
+        }
         
         res.writeJsonBody(serializeInstance(instances[id]));
     }
 
     void createInstance(HTTPServerRequest req, HTTPServerResponse res) {
         auto data = req.json;
+        auto tenantId = getTenantIdFromRequest(req);
         
         auto instance = Instance();
         instance.id = randomUUID().toString();
         instance.name = data["name"].str;
+        instance.tenantId = tenantId;
         instance.type = data["type"].str;
-        instance.flavor = data["flavor"].str;
-        instance.imageId = data["imageId"].str;
+        instance.flavor = data["flavor"].get!string;
+        instance.imageId = data["imageId"].get!string;
         instance.status = "creating";
         instance.createdAt = Clock.currTime().toUnixTime();
         instance.updatedAt = instance.createdAt;
-        instance.metadata = data.get("metadata", JSONValue(["": ""]));
+        
+        if ("metadata" in data && data["metadata"].type == Json.Type.object) {
+            foreach (string key, value; data["metadata"].byKeyValue) {
+                instance.metadata[key] = value.get!string;
+            }
+        }
         
         if ("networkIds" in data) {
-            foreach (netId; data["networkIds"].array) {
-                instance.networkIds ~= netId.str;
+            foreach (netId; data["networkIds"]) {
+                instance.networkIds ~= netId.get!string;
             }
         }
         
         if ("volumeIds" in data) {
-            foreach (volId; data["volumeIds"].array) {
-                instance.volumeIds ~= volId.str;
+            foreach (volId; data["volumeIds"]) {
+                instance.volumeIds ~= volId.get!string;
             }
         }
         
@@ -119,7 +110,9 @@ class ComputeService {
         res.writeJsonBody(serializeInstance(instance));
     }
 
-    voidauto tenantId = getTenantIdFromRequest(req);
+    void deleteInstance(HTTPServerRequest req, HTTPServerResponse res) {
+        auto id = req.params["id"];
+        auto tenantId = getTenantIdFromRequest(req);
         
         if (id !in instances) {
             res.statusCode = HTTPStatus.notFound;
@@ -190,8 +183,7 @@ class ComputeService {
         if (id !in instances) {
             res.statusCode = HTTPStatus.notFound;
             res.writeJsonBody(["error": "Instance not found"]);
-            reenantId": instance.tenantId,
-            "tturn;
+            return;
         }
         
         // Verify tenant ownership
@@ -218,9 +210,7 @@ class ComputeService {
         if ("X-Tenant-ID" in req.headers) {
             return req.headers["X-Tenant-ID"];
         }
-        return "default"
-        
-        res.writeJsonBody(serializeInstance(instances[id]));
+        return "default";
     }
 
     void listFlavors(HTTPServerRequest req, HTTPServerResponse res) {
@@ -233,19 +223,20 @@ class ComputeService {
         res.writeJsonBody(["flavors": flavors]);
     }
 
-    JSONValue serializeInstance(Instance instance) {
-        return JSONValue([
-            "id": instance.id,
-            "name": instance.name,
-            "type": instance.type,
-            "flavor": instance.flavor,
-            "status": instance.status,
-            "imageId": instance.imageId,
-            "networkIds": JSONValue(instance.networkIds),
-            "volumeIds": JSONValue(instance.volumeIds),
-            "createdAt": instance.createdAt,
-            "updatedAt": instance.updatedAt,
-            "metadata": instance.metadata
+    Json serializeInstance(Instance instance) {
+        return Json([
+            "id": Json(instance.id),
+            "name": Json(instance.name),
+            "tenantId": Json(instance.tenantId),
+            "type": Json(instance.type),
+            "flavor": Json(instance.flavor),
+            "status": Json(instance.status),
+            "imageId": Json(instance.imageId),
+            "networkIds": serializeToJson(instance.networkIds),
+            "volumeIds": serializeToJson(instance.volumeIds),
+            "createdAt": Json(instance.createdAt),
+            "updatedAt": Json(instance.updatedAt),
+            "metadata": serializeToJson(instance.metadata)
         ]);
     }
 }

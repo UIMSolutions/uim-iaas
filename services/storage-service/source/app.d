@@ -2,7 +2,6 @@ module app;
 
 import vibe.vibe;
 import std.stdio;
-import std.json;
 import std.uuid;
 import std.datetime;
 
@@ -20,7 +19,7 @@ struct Volume {
     string attachedTo; // instance ID
     long createdAt;
     long updatedAt;
-    JSONValue metadata;
+    string[string] metadata;
 }
 
 struct Bucket {
@@ -32,7 +31,7 @@ struct Bucket {
     long totalSizeBytes;
     string status;
     long createdAt;
-    JSONValue metadata;
+    string[string] metadata;
 }
 
 class StorageService {
@@ -66,13 +65,13 @@ class StorageService {
     void listVolumes(HTTPServerRequest req, HTTPServerResponse res) {
         auto tenantId = getTenantIdFromRequest(req);
         
-        JSONValue[] volumeList;
+        Json[] volumeList;
         foreach (volume; volumes) {
             if (volume.tenantId == tenantId) {
                 volumeList ~= serializeVolume(volume);
             }
         }
-        res.writeJsonBody(["volumes": volumeList]);
+        res.writeJsonBody(Json(["volumes": Json(volumeList)]));
     }
 
     void getVolume(HTTPServerRequest req, HTTPServerResponse res) {
@@ -100,24 +99,33 @@ class StorageService {
         
         auto volume = Volume();
         volume.id = randomUUID().toString();
-        volume.name = data["name"].str;
+        volume.name = data["name"].get!string;
         volume.tenantId = tenantId;
-        volume.type = data.get("type", JSONValue("block")).str;
-        volume.sizeGB = data["sizeGB"].integer;
+        volume.type = ("type" in data) ? data["type"].get!string : "block";
+        volume.sizeGB = data["sizeGB"].get!long;
         volume.status = "creating";
         volume.attachedTo = "";
         volume.createdAt = Clock.currTime().toUnixTime();
         volume.updatedAt = volume.createdAt;
-        volume.metadata = data.get("metadata", JSONValue(["": ""]));
+        
+        if ("metadata" in data && data["metadata"].type == Json.Type.object) {
+            foreach (string key, value; data["metadata"].byKeyValue) {
+                volume.metadata[key] = value.get!string;
+            }
+        }
         
         volumes[volume.id] = volume;
         
         // Simulate async creation
-        runTask({
-            sleep(1.seconds);
-            volumes[volume.id].status = "available";
-            volumes[volume.id].updatedAt = Clock.currTime().toUnixTime();
-            logInfo("Volume %s is now available", volume.id);
+        runTask(() nothrow {
+            try {
+                sleep(1.seconds);
+                volumes[volume.id].status = "available";
+                volumes[volume.id].updatedAt = Clock.currTime().toUnixTime();
+                logInfo("Volume %s is now available", volume.id);
+            } catch (Exception e) {
+                // Log error but don't crash
+            }
         });
         
         res.statusCode = HTTPStatus.created;
@@ -160,7 +168,7 @@ class StorageService {
         }
         
         auto data = req.json;
-        auto instanceId = data["instanceId"].str;
+        auto instanceId = data["instanceId"].get!string;
         
         volumes[id].status = "in-use";
         volumes[id].attachedTo = instanceId;
@@ -195,12 +203,12 @@ class StorageService {
         auto data = req.json;
         auto snapshotId = randomUUID().toString();
         
-        auto snapshot = JSONValue([
-            "id": snapshotId,
-            "volumeId": id,
-            "name": data["name"].str,
-            "status": "creating",
-            "createdAt": Clock.currTime().toUnixTime()
+        auto snapshot = Json([
+            "id": Json(snapshotId),
+            "volumeId": Json(id),
+            "name": Json(data["name"].get!string),
+            "status": Json("creating"),
+            "createdAt": Json(Clock.currTime().toUnixTime())
         ]);
         
         res.statusCode = HTTPStatus.created;
@@ -211,13 +219,13 @@ class StorageService {
     void listBuckets(HTTPServerRequest req, HTTPServerResponse res) {
         auto tenantId = getTenantIdFromRequest(req);
         
-        JSONValue[] bucketList;
+        Json[] bucketList;
         foreach (bucket; buckets) {
             if (bucket.tenantId == tenantId) {
                 bucketList ~= serializeBucket(bucket);
             }
         }
-        res.writeJsonBody(["buckets": bucketList]);
+        res.writeJsonBody(Json(["buckets": Json(bucketList)]));
     }
 
     void getBucket(HTTPServerRequest req, HTTPServerResponse res) {
@@ -236,14 +244,19 @@ class StorageService {
         
         auto bucket = Bucket();
         bucket.id = randomUUID().toString();
-        bucket.name = data["name"].str;
+        bucket.name = data["name"].get!string;
         bucket.tenantId = tenantId;
-        bucket.region = data.get("region", JSONValue("default")).str;
+        bucket.region = ("region" in data) ? data["region"].get!string : "default";
         bucket.objectCount = 0;
         bucket.totalSizeBytes = 0;
         bucket.status = "active";
         bucket.createdAt = Clock.currTime().toUnixTime();
-        bucket.metadata = data.get("metadata", JSONValue(["": ""]));
+        
+        if ("metadata" in data && data["metadata"].type == Json.Type.object) {
+            foreach (string key, value; data["metadata"].byKeyValue) {
+                bucket.metadata[key] = value.get!string;
+            }
+        }
         
         buckets[bucket.id] = bucket;
         
@@ -277,32 +290,32 @@ class StorageService {
         return "default";
     }
 
-    JSONValue serializeVolume(Volume volume) {
-        return JSONValue([
-            "id": volume.id,
-            "name": volume.name,
-            "tenantId": volume.tenantId,
-            "type": volume.type,
-            "sizeGB": volume.sizeGB,
-            "status": volume.status,
-            "attachedTo": volume.attachedTo,
-            "createdAt": volume.createdAt,
-            "updatedAt": volume.updatedAt,
-            "metadata": volume.metadata
+    Json serializeVolume(Volume volume) {
+        return Json([
+            "id": Json(volume.id),
+            "name": Json(volume.name),
+            "tenantId": Json(volume.tenantId),
+            "type": Json(volume.type),
+            "sizeGB": Json(volume.sizeGB),
+            "status": Json(volume.status),
+            "attachedTo": Json(volume.attachedTo),
+            "createdAt": Json(volume.createdAt),
+            "updatedAt": Json(volume.updatedAt),
+            "metadata": serializeToJson(volume.metadata)
         ]);
     }
 
-    JSONValue serializeBucket(Bucket bucket) {
-        return JSONValue([
-            "id": bucket.id,
-            "name": bucket.name,
-            "tenantId": bucket.tenantId,
-            "region": bucket.region,
-            "objectCount": bucket.objectCount,
-            "totalSizeBytes": bucket.totalSizeBytes,
-            "status": bucket.status,
-            "createdAt": bucket.createdAt,
-            "metadata": bucket.metadata
+    Json serializeBucket(Bucket bucket) {
+        return Json([
+            "id": Json(bucket.id),
+            "name": Json(bucket.name),
+            "tenantId": Json(bucket.tenantId),
+            "region": Json(bucket.region),
+            "objectCount": Json(bucket.objectCount),
+            "totalSizeBytes": Json(bucket.totalSizeBytes),
+            "status": Json(bucket.status),
+            "createdAt": Json(bucket.createdAt),
+            "metadata": serializeToJson(bucket.metadata)
         ]);
     }
 }

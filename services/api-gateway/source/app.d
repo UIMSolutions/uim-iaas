@@ -2,7 +2,6 @@ module app;
 
 import vibe.vibe;
 import std.stdio;
-import std.json;
 
 /**
  * API Gateway Service - Entry point for all IaaS platform requests
@@ -83,7 +82,7 @@ class ApiGateway {
                             if (clientRes.statusCode == HTTPStatus.ok) {
                                 auto verifyData = clientRes.readJson();
                                 if ("tenantId" in verifyData) {
-                                    tenantId = verifyData["tenantId"].str;
+                                    tenantId = verifyData["tenantId"].get!string;
                                 }
                             }
                         }
@@ -122,18 +121,18 @@ class ApiGateway {
     }
 
     void getPlatformStatus(HTTPServerRequest req, HTTPServerResponse res) {
-        JSONValue status = [
-            "platform": "UIM IaaS",
-            "version": "1.0.0",
-            "timestamp": Clock.currTime().toISOExtString(),
-            "services": [
-                "compute": checkServiceHealth(computeServiceUrl),
-                "storage": checkServiceHealth(storageServiceUrl),
-                "network": checkServiceHealth(networkServiceUrl),
-                "auth": checkServiceHealth(authServiceUrl),
-                "monitoring": checkServiceHealth(monitoringServiceUrl)
-            ]
-        ];
+        Json status = Json([
+            "platform": Json("UIM IaaS"),
+            "version": Json("2.0.0"),
+            "timestamp": Json(Clock.currTime().toISOExtString()),
+            "services": Json([
+                "compute": Json(checkServiceHealth(computeServiceUrl)),
+                "storage": Json(checkServiceHealth(storageServiceUrl)),
+                "network": Json(checkServiceHealth(networkServiceUrl)),
+                "auth": Json(checkServiceHealth(authServiceUrl)),
+                "monitoring": Json(checkServiceHealth(monitoringServiceUrl))
+            ])
+        ]);
         res.writeJsonBody(status);
     }
 

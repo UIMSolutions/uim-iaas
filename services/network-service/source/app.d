@@ -2,7 +2,6 @@ module app;
 
 import vibe.vibe;
 import std.stdio;
-import std.json;
 import std.uuid;
 import std.datetime;
 
@@ -18,7 +17,7 @@ struct Network {
     string status;
     long createdAt;
     long updatedAt;
-    JSONValue metadata;
+    string[string] metadata;
 }
 
 struct Subnet {
@@ -31,7 +30,7 @@ struct Subnet {
     bool dhcpEnabled;
     string[] dnsServers;
     long createdAt;
-    JSONValue metadata;
+    string[string] metadata;
 }
 
 struct SecurityGroup {
@@ -115,13 +114,18 @@ class NetworkService {
         
         auto network = Network();
         network.id = randomUUID().toString();
-        network.name = data["name"].str;
+        network.name = data["name"].get!string;
         network.tenantId = tenantId;
-        network.cidr = data["cidr"].str;
+        network.cidr = data["cidr"].get!string;
         network.status = "active";
         network.createdAt = Clock.currTime().toUnixTime();
         network.updatedAt = network.createdAt;
-        network.metadata = data.get("metadata", JSONValue(["": ""]));
+        
+        if ("metadata" in data && data["metadata"].type == Json.Type.object) {
+            foreach (string key, value; data["metadata"].byKeyValue) {
+                network.metadata[key] = value.get!string;
+            }
+        }
         
         networks[network.id] = network;
         
@@ -155,13 +159,13 @@ class NetworkService {
     void listSubnets(HTTPServerRequest req, HTTPServerResponse res) {
         auto tenantId = getTenantIdFromRequest(req);
         
-        JSONValue[] subnetList;
+        Json[] subnetList;
         foreach (subnet; subnets) {
             if (subnet.tenantId == tenantId) {
                 subnetList ~= serializeSubnet(subnet);
             }
         }
-        res.writeJsonBody(["subnets": subnetList]);
+        res.writeJsonBody(Json(["subnets": Json(subnetList)]));
     }
 
     void getSubnet(HTTPServerRequest req, HTTPServerResponse res) {
@@ -180,18 +184,23 @@ class NetworkService {
         
         auto subnet = Subnet();
         subnet.id = randomUUID().toString();
-        subnet.name = data["name"].str;
+        subnet.name = data["name"].get!string;
         subnet.tenantId = tenantId;
-        subnet.networkId = data["networkId"].str;
-        subnet.cidr = data["cidr"].str;
-        subnet.gateway = data["gateway"].str;
-        subnet.dhcpEnabled = data.get("dhcpEnabled", JSONValue(true)).boolean;
+        subnet.networkId = data["networkId"].get!string;
+        subnet.cidr = data["cidr"].get!string;
+        subnet.gateway = data["gateway"].get!string;
+        subnet.dhcpEnabled = ("dhcpEnabled" in data) ? data["dhcpEnabled"].get!bool : true;
         subnet.createdAt = Clock.currTime().toUnixTime();
-        subnet.metadata = data.get("metadata", JSONValue(["": ""]));
+        
+        if ("metadata" in data && data["metadata"].type == Json.Type.object) {
+            foreach (string key, value; data["metadata"].byKeyValue) {
+                subnet.metadata[key] = value.get!string;
+            }
+        }
         
         if ("dnsServers" in data) {
-            foreach (dns; data["dnsServers"].array) {
-                subnet.dnsServers ~= dns.str;
+            foreach (dns; data["dnsServers"]) {
+                subnet.dnsServers ~= dns.get!string;
             }
         }
         
@@ -243,9 +252,9 @@ class NetworkService {
         
         auto sg = SecurityGroup();
         sg.id = randomUUID().toString();
-        sg.name = data["name"].str;
+        sg.name = data["name"].get!string;
         sg.tenantId = tenantId;
-        sg.description = data.get("description", JSONValue("")).str;
+        sg.description = ("description" in data) ? data["description"].get!string : "";
         sg.createdAt = Clock.currTime().toUnixTime();
         sg.updatedAt = sg.createdAt;
         
@@ -279,11 +288,11 @@ class NetworkService {
         auto data = req.json;
         auto rule = Rule();
         rule.id = randomUUID().toString();
-        rule.direction = data["direction"].str;
-        rule.protocol = data["protocol"].str;
-        rule.portMin = cast(int)data["portMin"].integer;
-        rule.portMax = cast(int)data["portMax"].integer;
-        rule.cidr = data["cidr"].str;
+        rule.direction = data["direction"].get!string;
+        rule.protocol = data["protocol"].get!string;
+        rule.portMin = cast(int)data["portMin"].get!long;
+        rule.portMax = cast(int)data["portMax"].get!long;
+        rule.cidr = data["cidr"].get!string;
         
         securityGroups[id].rules ~= rule;
         securityGroups[id].updatedAt = Clock.currTime().toUnixTime();
@@ -332,59 +341,64 @@ class NetworkService {
         return "default";
     }
 
-    JSONValue serializeNetwork(Network network) {
-        return JSONValue([
-            "id": network.id,
-            "name": network.name,
-            "tenantId": network.tenantId,
-            "cidr": network.cidr,
-            "status": network.status,
-            "createdAt": network.createdAt,
-            "updatedAt": network.updatedAt,
-            "metadata": network.metadata
+    Json serializeNetwork(Network network) {
+        return Json([
+            "id": Json(network.id),
+            "name": Json(network.name),
+            "tenantId": Json(network.tenantId),
+            "cidr": Json(network.cidr),
+            "status": Json(network.status),
+            "createdAt": Json(network.createdAt),
+            "updatedAt": Json(network.updatedAt),
+            "metadata": serializeToJson(network.metadata)
         ]);
     }
 
-    JSONValue serializeSubnet(Subnet subnet) {
-        return JSONValue([
-            "id": subnet.id,
-            "name": subnet.name,
-            "tenantId": subnet.tenantId,
-            "networkId": subnet.networkId,
-            "cidr": subnet.cidr,
-            "gateway": subnet.gateway,
-            "dhcpEnabled": subnet.dhcpEnabled,
-            "dnsServers": JSONValue(subnet.dnsServers),
-            "createdAt": subnet.createdAt,
-            "metadata": subnet.metadata
+    Json serializeSubnet(Subnet subnet) {
+        Json[] dnsArray;
+        foreach (dns; subnet.dnsServers) {
+            dnsArray ~= Json(dns);
+        }
+        
+        return Json([
+            "id": Json(subnet.id),
+            "name": Json(subnet.name),
+            "tenantId": Json(subnet.tenantId),
+            "networkId": Json(subnet.networkId),
+            "cidr": Json(subnet.cidr),
+            "gateway": Json(subnet.gateway),
+            "dhcpEnabled": Json(subnet.dhcpEnabled),
+            "dnsServers": Json(dnsArray),
+            "createdAt": Json(subnet.createdAt),
+            "metadata": serializeToJson(subnet.metadata)
         ]);
     }
 
-    JSONValue serializeSecurityGroup(SecurityGroup sg) {
-        JSONValue[] rulesList;
+    Json serializeSecurityGroup(SecurityGroup sg) {
+        Json[] rulesList;
         foreach (rule; sg.rules) {
             rulesList ~= serializeRule(rule);
         }
         
-        return JSONValue([
-            "id": sg.id,
-            "name": sg.name,
-            "tenantId": sg.tenantId,
-            "description": sg.description,
-            "rules": JSONValue(rulesList),
-            "createdAt": sg.createdAt,
-            "updatedAt": sg.updatedAt
+        return Json([
+            "id": Json(sg.id),
+            "name": Json(sg.name),
+            "tenantId": Json(sg.tenantId),
+            "description": Json(sg.description),
+            "rules": Json(rulesList),
+            "createdAt": Json(sg.createdAt),
+            "updatedAt": Json(sg.updatedAt)
         ]);
     }
 
-    JSONValue serializeRule(Rule rule) {
-        return JSONValue([
-            "id": rule.id,
-            "direction": rule.direction,
-            "protocol": rule.protocol,
-            "portMin": rule.portMin,
-            "portMax": rule.portMax,
-            "cidr": rule.cidr
+    Json serializeRule(Rule rule) {
+        return Json([
+            "id": Json(rule.id),
+            "direction": Json(rule.direction),
+            "protocol": Json(rule.protocol),
+            "portMin": Json(rule.portMin),
+            "portMax": Json(rule.portMax),
+            "cidr": Json(rule.cidr)
         ]);
     }
 }
