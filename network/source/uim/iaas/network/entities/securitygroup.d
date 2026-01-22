@@ -23,4 +23,5 @@ class SecurityGroupEntity : UIMEntity {
     protected RuleEntity[] _rules;
     @property RuleEntity[] rules() { return _rules; }
     @property void rules(RuleEntity[] value) { _rules = value; }
+    void addRule(RuleEntity rule) { _rules ~= rule; }   
 }

@@ -6,9 +6,9 @@ import uim.iaas.network;
  */
 
 class NetworkService {
-    private Network[string] networks;
-    private Subnet[string] subnets;
-    private SecurityGroup[string] securityGroups;
+    private NetworkEntity[string] networks;
+    private SubnetEntity[string] subnets;
+    private SecurityGroupEntity[string] securityGroups;
 
     void setupRoutes(URLRouter router) {
         router.get("/health", &healthCheck);
@@ -65,7 +65,7 @@ class NetworkService {
         auto data = req.json;
         auto tenantId = getTenantIdFromRequest(req);
         
-        auto network = Network();
+        auto network = new NetworkEntity();
         network.id = randomUUID().toString();
         network.name = data["name"].get!string;
         network.tenantId = tenantId;
@@ -76,7 +76,7 @@ class NetworkService {
         
         if ("metadata" in data && data["metadata"].type == Json.Type.object) {
             foreach (string key, value; data["metadata"].byKeyValue) {
-                network.metadata[key] = value.get!string;
+                network.metadata(key, value.get!string);
             }
         }
         
@@ -135,7 +135,7 @@ class NetworkService {
         auto data = req.json;
         auto tenantId = getTenantIdFromRequest(req);
         
-        auto subnet = Subnet();
+        auto subnet = new SubnetEntity();
         subnet.id = randomUUID().toString();
         subnet.name = data["name"].get!string;
         subnet.tenantId = tenantId;
@@ -147,7 +147,7 @@ class NetworkService {
         
         if ("metadata" in data && data["metadata"].type == Json.Type.object) {
             foreach (string key, value; data["metadata"].byKeyValue) {
-                subnet.metadata[key] = value.get!string;
+                subnet.metadata(key, value.get!string);
             }
         }
         
@@ -203,7 +203,7 @@ class NetworkService {
         auto data = req.json;
         auto tenantId = getTenantIdFromRequest(req);
         
-        auto sg = SecurityGroup();
+        auto sg = new SecurityGroupEntity();
         sg.id = randomUUID().toString();
         sg.name = data["name"].get!string;
         sg.tenantId = tenantId;
@@ -239,7 +239,7 @@ class NetworkService {
         }
         
         auto data = req.json;
-        auto rule = Rule();
+        auto rule = new RuleEntity();
         rule.id = randomUUID().toString();
         rule.direction = data["direction"].get!string;
         rule.protocol = data["protocol"].get!string;
@@ -247,7 +247,7 @@ class NetworkService {
         rule.portMax = cast(int)data["portMax"].get!long;
         rule.cidr = data["cidr"].get!string;
         
-        securityGroups[id].rules ~= rule;
+        securityGroups[id].addRule(rule);
         securityGroups[id].updatedAt = Clock.currTime().toUnixTime();
         
         res.statusCode = HTTPStatus.created;
@@ -264,7 +264,7 @@ class NetworkService {
             return;
         }
         
-        Rule[] newRules;
+        RuleEntity[] newRules;
         bool found = false;
         foreach (rule; securityGroups[id].rules) {
             if (rule.id != ruleId) {
@@ -294,7 +294,7 @@ class NetworkService {
         return "default";
     }
 
-    Json serializeNetwork(Network network) {
+    Json serializeNetwork(NetworkEntity network) {
         return Json([
             "id": Json(network.id),
             "name": Json(network.name),
@@ -307,7 +307,7 @@ class NetworkService {
         ]);
     }
 
-    Json serializeSubnet(Subnet subnet) {
+    Json serializeSubnet(SubnetEntity subnet) {
         Json[] dnsArray;
         foreach (dns; subnet.dnsServers) {
             dnsArray ~= Json(dns);
@@ -327,7 +327,7 @@ class NetworkService {
         ]);
     }
 
-    Json serializeSecurityGroup(SecurityGroup sg) {
+    Json serializeSecurityGroup(SecurityGroupEntity sg) {
         Json[] rulesList;
         foreach (rule; sg.rules) {
             rulesList ~= serializeRule(rule);
@@ -344,7 +344,7 @@ class NetworkService {
         ]);
     }
 
-    Json serializeRule(Rule rule) {
+    Json serializeRule(RuleEntity rule) {
         return Json([
             "id": Json(rule.id),
             "direction": Json(rule.direction),
