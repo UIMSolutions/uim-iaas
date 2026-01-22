@@ -10,6 +10,699 @@ This service is part of the UIM IaaS platform and provides compute resource mana
 **Default Port:** 8081  
 **Version:** 26.1.2 compatible
 
+## NAF v4 Architecture Description
+
+### A1 - Meta Data Definitions
+
+**Architecture Product Information:**
+- **Name:** Compute Service Architecture
+- **Version:** 1.0
+- **Date:** January 2026
+- **Classification:** Unclassified
+- **Framework:** NATO Architecture Framework v4
+- **Purpose:** Define the architecture of the compute resource management service
+
+### C1 - Capability Taxonomy
+
+**Primary Capabilities:**
+- **Compute Resource Management**: Provide virtualized compute resources (VMs/Containers)
+- **Instance Lifecycle Management**: Create, start, stop, restart, delete compute instances
+- **Multi-Tenancy**: Isolate and manage resources per tenant
+- **Resource Allocation**: Assign compute resources based on predefined flavors
+- **State Management**: Track and transition instance states
+- **Network Integration**: Attach instances to virtual networks
+- **Storage Integration**: Attach volumes to compute instances
+- **Metadata Management**: Store and retrieve instance-specific metadata
+
+### C2 - Enterprise Vision
+
+**Operational Concept:**
+The Compute Service enables cloud tenants to provision and manage virtualized compute resources on-demand within a multi-tenant infrastructure-as-a-service platform. It provides REST API access for automated and programmatic resource management.
+
+**Strategic Goals:**
+- Enable self-service compute resource provisioning
+- Ensure tenant isolation and data security
+- Provide scalable and flexible compute options
+- Support both VM and container workloads
+- Integrate with network and storage services
+
+### L2 - Logical Scenario
+
+**Service Interactions:**
+1. **Client → API Gateway → Compute Service**: Authenticated requests for compute operations
+2. **Compute Service → Network Service**: Network attachment operations
+3. **Compute Service → Storage Service**: Volume attachment operations
+4. **Compute Service → Monitoring Service**: Metrics and health data
+5. **Compute Service → Auth Service**: Tenant validation (via Gateway)
+
+### L4 - Logical Activities
+
+**Key Activities:**
+- **Instance Provisioning**: Validate request → Allocate resources → Initialize instance → Return instance ID
+- **Instance State Transition**: Validate ownership → Check current state → Execute transition → Update state
+- **Instance Deprovisioning**: Validate ownership → Detach resources → Delete instance → Cleanup
+- **Resource Enumeration**: Validate tenant → Query instances → Filter by tenant → Return list
+- **Flavor Selection**: Retrieve flavor catalog → Present options → Validate selection
+
+### Lr - Logical Resources
+
+**Resource Types:**
+- **InstanceEntity**: Virtual machine or container instance
+  - Attributes: id, name, tenantId, type, flavor, status, imageId, createdAt, updatedAt
+  - States: creating, running, stopped, restarting, error
+- **Flavor**: Compute resource template
+  - Attributes: name, vcpus, ram (MB), disk (GB)
+- **Network Attachment**: Link between instance and virtual network
+- **Volume Attachment**: Link between instance and storage volume
+
+### P1 - Resource Types
+
+**Service Component:**
+- **Type:** Application Service
+- **Runtime:** D Language (vibe.d framework)
+- **Deployment:** Container/Executable
+- **Interfaces:** REST/HTTP
+- **Data Format:** JSON
+
+**Resource Classes:**
+- **Compute Instance**: Virtualized compute resource (VM/Container)
+- **Flavor**: Resource allocation template
+- **Instance Metadata**: Key-value configuration store
+
+### P2 - Resource Structure
+
+**Service Architecture:**
+```
+┌─────────────────────────────────────┐
+│      Compute Service                │
+│  (uim-iaas-compute:8081)            │
+├─────────────────────────────────────┤
+│  HTTP Server Layer (vibe.d)         │
+├─────────────────────────────────────┤
+│  Service Layer                      │
+│  ├─ ComputeService                  │
+│  │  ├─ Route Management             │
+│  │  ├─ Tenant Validation            │
+│  │  ├─ Instance Lifecycle           │
+│  │  └─ Async Operations             │
+├─────────────────────────────────────┤
+│  Entity Layer                       │
+│  └─ InstanceEntity                  │
+│     ├─ Properties (via getters)     │
+│     └─ Helper Methods               │
+├─────────────────────────────────────┤
+│  Data Store (In-Memory)             │
+│  └─ instances[id] → InstanceEntity  │
+└─────────────────────────────────────┘
+```
+
+### P4 - Resource Functions
+
+**Functional Capabilities:**
+- **healthCheck()**: Service health monitoring
+- **createInstance()**: Provision new compute instance
+- **getInstance()**: Retrieve instance details
+- **listInstances()**: Enumerate tenant instances
+- **deleteInstance()**: Deprovision instance
+- **startInstance()**: Transition instance to running state
+- **stopInstance()**: Transition instance to stopped state
+- **restartInstance()**: Restart running instance
+- **listFlavors()**: Retrieve available resource templates
+- **getTenantIdFromRequest()**: Extract tenant context
+
+### P8 - Resource Interactions
+
+**Interface Specifications:**
+
+**Provided Interface:**
+- **Protocol:** HTTP/REST
+- **Port:** 8081
+- **Encoding:** JSON
+- **Authentication:** X-Tenant-ID header (from API Gateway)
+- **API Version:** v1
+
+**Required Interfaces:**
+- **Network Service**: For network attachment operations
+- **Storage Service**: For volume attachment operations
+- **Monitoring Service**: For health metrics collection
+
+### S4 - Service Functions
+
+**Service Characteristics:**
+- **Service Type:** Stateful (manages instance state)
+- **Availability:** Single instance (can be scaled)
+- **Data Persistence:** In-memory (production would use database)
+- **Concurrency:** Async operations via vibe.d tasks
+- **Tenant Isolation:** Header-based tenant identification
+
+**Service Operations:**
+- **CRUD Operations**: Full create, read, update, delete for instances
+- **State Transitions**: Lifecycle management with state validation
+- **Resource Discovery**: Flavor enumeration and instance listing
+- **Health Reporting**: Status endpoint for monitoring
+
+### Sv - Service Interfaces
+
+**REST API Interface:**
+```
+Service: compute-service
+Base Path: /api/v1/compute
+Methods: GET, POST, DELETE
+Content-Type: application/json
+Headers:
+  - X-Tenant-ID (required for tenant operations)
+  - Content-Type: application/json
+```
+
+**Endpoints:**
+- `GET /health` - Health check (no auth required)
+- `GET /api/v1/compute/instances` - List instances
+- `POST /api/v1/compute/instances` - Create instance
+- `GET /api/v1/compute/instances/:id` - Get instance
+- `DELETE /api/v1/compute/instances/:id` - Delete instance
+- `POST /api/v1/compute/instances/:id/start` - Start instance
+- `POST /api/v1/compute/instances/:id/stop` - Stop instance
+- `POST /api/v1/compute/instances/:id/restart` - Restart instance
+- `GET /api/v1/compute/flavors` - List flavors
+
+### SOV-1 - Service Orchestration
+
+**Service Dependencies:**
+1. **Auth Service** (indirect via API Gateway): Tenant authentication
+2. **Network Service** (future): Network resource management
+3. **Storage Service** (future): Volume management
+4. **Monitoring Service** (future): Metrics collection
+
+**Orchestration Patterns:**
+- **Synchronous**: Instance CRUD operations return immediately
+- **Asynchronous**: Instance creation and restart use background tasks
+- **Event-Driven**: State transitions trigger async workflows
+
+### Capability to Services Mapping
+
+| Capability | Service Function | NAF View |
+|------------|-----------------|----------|
+| Compute Resource Provisioning | createInstance() | S4, P4 |
+| Instance Lifecycle Management | start/stop/restart/deleteInstance() | S4, P4 |
+| Resource Discovery | listInstances(), listFlavors() | S4, P4 |
+| Multi-Tenant Isolation | getTenantIdFromRequest() | P4, Sv |
+| State Management | InstanceEntity.status | Lr, P2 |
+| Health Monitoring | healthCheck() | S4, Sv |
+
+## UML Diagrams
+
+### Component Diagram
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Compute Service                          │
+│                  (uim-iaas-compute)                         │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │           HTTP Server (vibe.d)                       │  │
+│  │              Port: 8081                              │  │
+│  └───────────────────┬──────────────────────────────────┘  │
+│                      │                                      │
+│  ┌───────────────────▼──────────────────────────────────┐  │
+│  │         ComputeService                               │  │
+│  │  ┌────────────────────────────────────────────────┐  │  │
+│  │  │  setupRoutes()                                 │  │  │
+│  │  │  healthCheck()                                 │  │  │
+│  │  │  listInstances()                               │  │  │
+│  │  │  getInstance()                                 │  │  │
+│  │  │  createInstance()                              │  │  │
+│  │  │  deleteInstance()                              │  │  │
+│  │  │  startInstance()                               │  │  │
+│  │  │  stopInstance()                                │  │  │
+│  │  │  restartInstance()                             │  │  │
+│  │  │  listFlavors()                                 │  │  │
+│  │  │  getTenantIdFromRequest()                      │  │  │
+│  │  │  serializeInstance()                           │  │  │
+│  │  └────────────────────────────────────────────────┘  │  │
+│  │                      │                                │  │
+│  │                      │ uses                           │  │
+│  │                      ▼                                │  │
+│  │  ┌────────────────────────────────────────────────┐  │  │
+│  │  │  instances: InstanceEntity[string]             │  │  │
+│  │  └────────────────────────────────────────────────┘  │  │
+│  └──────────────────────────────────────────────────────┘  │
+│                      │                                      │
+│                      │ manages                              │
+│                      ▼                                      │
+│  ┌───────────────────────────────────────────────────────┐ │
+│  │         InstanceEntity                                │ │
+│  │  ┌─────────────────────────────────────────────────┐ │ │
+│  │  │  Properties:                                    │ │ │
+│  │  │   - _id: string                                 │ │ │
+│  │  │   - _name: string                               │ │ │
+│  │  │   - _tenantId: string                           │ │ │
+│  │  │   - _type: string                               │ │ │
+│  │  │   - _flavor: string                             │ │ │
+│  │  │   - _status: string                             │ │ │
+│  │  │   - _imageId: string                            │ │ │
+│  │  │   - _networkIds: string[]                       │ │ │
+│  │  │   - _volumeIds: string[]                        │ │ │
+│  │  │   - _createdAt: long                            │ │ │
+│  │  │   - _updatedAt: long                            │ │ │
+│  │  │   - _metadata: string[string]                   │ │ │
+│  │  │                                                 │ │ │
+│  │  │  Methods:                                       │ │ │
+│  │  │   + getters/setters for all properties         │ │ │
+│  │  │   + addNetworkId(string)                        │ │ │
+│  │  │   + addVolumeId(string)                         │ │ │
+│  │  │   + metadata(string, string)                    │ │ │
+│  │  └─────────────────────────────────────────────────┘ │ │
+│  └───────────────────────────────────────────────────────┘ │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Class Diagram
+
+```plantuml
+@startuml
+!define ENTITY class
+
+abstract class UIMEntity {
+}
+
+abstract class UIMService {
+}
+
+class ComputeService extends UIMService {
+  - instances: InstanceEntity[string]
+  --
+  + setupRoutes(URLRouter)
+  + healthCheck(HTTPServerRequest, HTTPServerResponse)
+  + listInstances(HTTPServerRequest, HTTPServerResponse)
+  + getInstance(HTTPServerRequest, HTTPServerResponse)
+  + createInstance(HTTPServerRequest, HTTPServerResponse)
+  + deleteInstance(HTTPServerRequest, HTTPServerResponse)
+  + startInstance(HTTPServerRequest, HTTPServerResponse)
+  + stopInstance(HTTPServerRequest, HTTPServerResponse)
+  + restartInstance(HTTPServerRequest, HTTPServerResponse)
+  + listFlavors(HTTPServerRequest, HTTPServerResponse)
+  - getTenantIdFromRequest(HTTPServerRequest): string
+  - serializeInstance(InstanceEntity): Json
+}
+
+class InstanceEntity extends UIMEntity {
+  - _id: string
+  - _name: string
+  - _tenantId: string
+  - _type: string
+  - _flavor: string
+  - _status: string
+  - _imageId: string
+  - _networkIds: string[]
+  - _volumeIds: string[]
+  - _createdAt: long
+  - _updatedAt: long
+  - _metadata: string[string]
+  --
+  + id(): string
+  + id(string): void
+  + name(): string
+  + name(string): void
+  + tenantId(): string
+  + tenantId(string): void
+  + type(): string
+  + type(string): void
+  + flavor(): string
+  + flavor(string): void
+  + status(): string
+  + status(string): void
+  + imageId(): string
+  + imageId(string): void
+  + networkIds(): string[]
+  + networkIds(string[]): void
+  + volumeIds(): string[]
+  + volumeIds(string[]): void
+  + createdAt(): long
+  + createdAt(long): void
+  + updatedAt(): long
+  + updatedAt(long): void
+  + metadata(): string[string]
+  + metadata(string[string]): void
+  + metadata(string): string
+  + metadata(string, string): void
+  + addNetworkId(string): void
+  + addVolumeId(string): void
+}
+
+ComputeService "1" *-- "0..*" InstanceEntity : manages
+@enduml
+```
+
+### Sequence Diagram - Create Instance
+
+```plantuml
+@startuml
+actor Client
+participant "API Gateway" as Gateway
+participant "ComputeService" as Service
+participant "InstanceEntity" as Entity
+database "instances[string]" as Store
+
+Client -> Gateway: POST /api/v1/compute/instances\n+ X-Tenant-ID\n+ instance data
+activate Gateway
+
+Gateway -> Service: createInstance(req, res)
+activate Service
+
+Service -> Service: getTenantIdFromRequest(req)
+Service -> Entity: new InstanceEntity()
+activate Entity
+Entity --> Service: instance
+deactivate Entity
+
+Service -> Entity: set id (UUID)
+Service -> Entity: set name, tenantId, type, flavor, etc.
+Service -> Entity: set status = "creating"
+Service -> Entity: set timestamps
+
+Service -> Store: instances[id] = instance
+
+Service -> Service: runTask(async)
+note right: Async task starts\nin background
+
+Service --> Gateway: 201 Created\n+ instance JSON
+deactivate Service
+
+Gateway --> Client: 201 Created\n+ instance details
+
+... 2 seconds later ...
+
+Service -> Store: instances[id].status = "running"
+Service -> Store: instances[id].updatedAt = now()
+
+@enduml
+```
+
+### Sequence Diagram - List Instances
+
+```plantuml
+@startuml
+actor Client
+participant "API Gateway" as Gateway
+participant "ComputeService" as Service
+database "instances[string]" as Store
+
+Client -> Gateway: GET /api/v1/compute/instances\n+ X-Tenant-ID
+activate Gateway
+
+Gateway -> Service: listInstances(req, res)
+activate Service
+
+Service -> Service: getTenantIdFromRequest(req)
+note right: Extract tenant ID\nfrom header
+
+Service -> Store: foreach instance
+activate Store
+
+loop for each instance
+  Store --> Service: instance
+  
+  alt instance.tenantId == tenantId
+    Service -> Service: serializeInstance(instance)
+    Service -> Service: add to instanceList
+  end
+end
+
+deactivate Store
+
+Service --> Gateway: 200 OK\n{"instances": [...]}
+deactivate Service
+
+Gateway --> Client: 200 OK\n+ instances JSON
+
+@enduml
+```
+
+### Sequence Diagram - Restart Instance
+
+```plantuml
+@startuml
+actor Client
+participant "API Gateway" as Gateway
+participant "ComputeService" as Service
+database "instances[string]" as Store
+
+Client -> Gateway: POST /api/v1/compute/instances/:id/restart\n+ X-Tenant-ID
+activate Gateway
+
+Gateway -> Service: restartInstance(req, res)
+activate Service
+
+Service -> Service: getTenantIdFromRequest(req)
+Service -> Service: id = req.params["id"]
+
+alt instance not found
+  Service --> Gateway: 404 Not Found\n{"error": "Instance not found"}
+else instance.tenantId != tenantId
+  Service --> Gateway: 403 Forbidden\n{"error": "Access denied"}
+else authorized
+  Service -> Store: instances[id].status = "restarting"
+  Service -> Store: instances[id].updatedAt = now()
+  
+  Service -> Service: runTask(async)
+  note right: Async restart\nin background
+  
+  Service -> Service: serializeInstance(instance)
+  Service --> Gateway: 200 OK\n+ instance JSON
+end
+
+deactivate Service
+Gateway --> Client: Response
+
+... 1 second later ...
+
+Service -> Store: instances[id].status = "running"
+Service -> Store: instances[id].updatedAt = now()
+
+@enduml
+```
+
+### State Diagram - Instance Lifecycle
+
+```plantuml
+@startuml
+[*] --> creating : createInstance()
+
+creating --> running : async creation complete
+creating --> error : creation failed
+
+running --> stopped : stopInstance()
+running --> restarting : restartInstance()
+running --> [*] : deleteInstance()
+
+stopped --> running : startInstance()
+stopped --> [*] : deleteInstance()
+
+restarting --> running : async restart complete
+restarting --> error : restart failed
+
+error --> [*] : deleteInstance()
+
+note right of creating
+  Instance is being
+  provisioned
+end note
+
+note right of running
+  Instance is active
+  and operational
+end note
+
+note right of stopped
+  Instance is inactive
+  but preserved
+end note
+
+note right of restarting
+  Instance is being
+  restarted (transient)
+end note
+
+note right of error
+  Instance encountered
+  an error
+end note
+@enduml
+```
+
+### Deployment Diagram
+
+```plantuml
+@startuml
+node "Container/Host" {
+  component "uim-iaas-compute" {
+    [HTTP Server\nvibe.d:8081] as HTTP
+    [ComputeService] as Service
+    [InstanceEntity] as Entity
+    database "In-Memory Store" as DB
+    
+    HTTP --> Service
+    Service --> Entity
+    Service --> DB
+  }
+}
+
+node "API Gateway" {
+  [Gateway:8080] as Gateway
+}
+
+node "Network Service" {
+  [NetworkService:8083] as Network
+}
+
+node "Storage Service" {
+  [StorageService:8084] as Storage
+}
+
+node "Monitoring" {
+  [Monitoring:8085] as Monitor
+}
+
+cloud "Client" as Client
+
+Client --> Gateway : REST/JSON
+Gateway --> HTTP : REST/JSON\n+X-Tenant-ID
+Service ..> Network : HTTP (future)
+Service ..> Storage : HTTP (future)
+Service ..> Monitor : Metrics (future)
+
+@enduml
+```
+
+### Use Case Diagram
+
+```plantuml
+@startuml
+left to right direction
+
+actor "Tenant User" as User
+actor "API Gateway" as Gateway
+actor "Administrator" as Admin
+
+rectangle "Compute Service" {
+  usecase "Create Instance" as UC1
+  usecase "List Instances" as UC2
+  usecase "Get Instance Details" as UC3
+  usecase "Start Instance" as UC4
+  usecase "Stop Instance" as UC5
+  usecase "Restart Instance" as UC6
+  usecase "Delete Instance" as UC7
+  usecase "List Flavors" as UC8
+  usecase "Check Health" as UC9
+  usecase "Validate Tenant" as UC10
+  usecase "Manage Instance State" as UC11
+}
+
+User --> Gateway
+Gateway --> UC1
+Gateway --> UC2
+Gateway --> UC3
+Gateway --> UC4
+Gateway --> UC5
+Gateway --> UC6
+Gateway --> UC7
+Gateway --> UC8
+
+Admin --> UC9
+
+UC1 ..> UC10 : <<include>>
+UC2 ..> UC10 : <<include>>
+UC3 ..> UC10 : <<include>>
+UC4 ..> UC10 : <<include>>
+UC5 ..> UC10 : <<include>>
+UC6 ..> UC10 : <<include>>
+UC7 ..> UC10 : <<include>>
+
+UC1 ..> UC11 : <<include>>
+UC4 ..> UC11 : <<include>>
+UC5 ..> UC11 : <<include>>
+UC6 ..> UC11 : <<include>>
+UC7 ..> UC11 : <<include>>
+
+note right of UC10
+  Ensures user can only
+  access their tenant's
+  resources
+end note
+
+note right of UC11
+  Manages transitions
+  between instance states
+end note
+@enduml
+```
+
+### Activity Diagram - Create Instance Flow
+
+```plantuml
+@startuml
+start
+
+:Receive POST /api/v1/compute/instances;
+
+:Extract tenant ID from X-Tenant-ID header;
+
+:Parse JSON request body;
+
+:Create new InstanceEntity;
+
+:Generate UUID for instance;
+
+:Set instance properties from request;
+note right
+  - name
+  - type
+  - flavor
+  - imageId
+end note
+
+:Set instance.tenantId = tenant ID;
+
+:Set instance.status = "creating";
+
+:Set timestamps (createdAt, updatedAt);
+
+if (metadata provided?) then (yes)
+  :Add metadata key-value pairs;
+endif
+
+if (networkIds provided?) then (yes)
+  :Add network IDs to instance;
+endif
+
+if (volumeIds provided?) then (yes)
+  :Add volume IDs to instance;
+endif
+
+:Store instance in instances[id];
+
+fork
+  :Return 201 Created with instance JSON;
+  
+fork again
+  :Start async task;
+  
+  :Sleep 2 seconds;
+  
+  :Set instance.status = "running";
+  
+  :Update instance.updatedAt;
+  
+  :Log instance running;
+  
+end fork
+
+stop
+@enduml
+```
+
 ## Features
 
 - ✅ Create, start, stop, restart, and delete compute instances

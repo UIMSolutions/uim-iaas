@@ -6,8 +6,6 @@ module app;
 
 import uim.iaas.auth;
 
-
-
 void main() {
   auto settings = new HTTPServerSettings;
   settings.port = 8084;
