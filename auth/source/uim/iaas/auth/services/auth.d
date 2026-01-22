@@ -155,7 +155,7 @@ class AuthService {
     auto token = getTokenFromRequest(req);
     if (token.length == 0) {
       res.statusCode = HTTPStatus.unauthorized;
-      res.writeJsonBody(["valid": false, "error": "No token provided"]);
+      res.writeJsonBody(["valid": Json(false), "error": Json("No token provided")]);
       return;
     }
 
@@ -164,9 +164,9 @@ class AuthService {
         if (session.expiresAt >= Clock.currTime().toUnixTime()) {
           if (session.userId in users) {
             res.writeJsonBody([
-              "tenantId": session.tenantId,
-              "valid": true,
-              "userId": session.userId,
+              "tenantId": session.tenantId.toJson,
+              "valid": Json(true),
+              "userId": session.userId.toJson,
               "user": serializeUser(users[session.userId])
             ]);
             return;
@@ -177,8 +177,8 @@ class AuthService {
 
     res.statusCode = HTTPStatus.unauthorized;
     res.writeJsonBody([
-        "valid": false,
-        "error": "Invalid or expired token"
+        "valid": Json(false),
+        "error": Json("Invalid or expired token")
       ]);
   }
 
@@ -219,24 +219,28 @@ class AuthService {
   void createUser(HTTPServerRequest req, HTTPServerResponse res) {
     if (!isAuthenticated(req)) {
       res.statusCode = HTTPStatus.unauthorized;
-      auto tenantId = getTenantIdFromRequest(req);
-
-      auto user = new UserEntity();
-      user.id = randomUUID().toString();
-      user.username = data["username"].get!string;
-      user.email = data["email"].get!string;
-      user.passwordHash = hashPassword(data["password"].get!string);
-      user.tenantId = ("tenantId" in data) ? data["tenantId"].get!string : tenantId;
-      user.role = ("role" in data) ? data["role"].get!string : "user";
-      user.active = true;
-      user.createdAt = Clock.currTime().toUnixTime();
-      user.lastLogin = 0;
-
-      users[user.id] = user;
-
-      res.statusCode = HTTPStatus.created;
-      res.writeJsonBody(serializeUser(user));
+      res.writeJsonBody(["error": "Unauthorized"]);
+      return;
     }
+
+    auto data = req.json;
+    auto tenantId = getTenantIdFromRequest(req);
+
+    auto user = new UserEntity();
+    user.id = randomUUID().toString();
+    user.username = data["username"].get!string;
+    user.email = data["email"].get!string;
+    user.passwordHash = hashPassword(data["password"].get!string);
+    user.tenantId = ("tenantId" in data) ? data["tenantId"].get!string : tenantId;
+    user.role = ("role" in data) ? data["role"].get!string : "user";
+    user.active = true;
+    user.createdAt = Clock.currTime().toUnixTime();
+    user.lastLogin = 0;
+
+    users[user.id] = user;
+
+    res.statusCode = HTTPStatus.created;
+    res.writeJsonBody(serializeUser(user));
   }
 
   void updateUser(HTTPServerRequest req, HTTPServerResponse res) {
@@ -420,7 +424,7 @@ class AuthService {
 
     auto data = req.json;
 
-    auto tenant = TenantEntity();
+    auto tenant = new TenantEntity();
     tenant.id = randomUUID().toString();
     tenant.name = data["name"].get!string;
     tenant.description = ("description" in data) ? data["description"].get!string : "";
