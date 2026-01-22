@@ -1,5 +1,7 @@
 module app;
 
+import uim.iaas.compute;
+
 void main() {
     auto settings = new HTTPServerSettings;
     settings.port = 8081;

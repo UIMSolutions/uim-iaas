@@ -89,7 +89,7 @@ class NetworkService {
     void listNetworks(HTTPServerRequest req, HTTPServerResponse res) {
         auto tenantId = getTenantIdFromRequest(req);
         
-        JSONValue[] networkList;
+        Json[] networkList;
         foreach (network; networks) {
             if (network.tenantId == tenantId) {
                 networkList ~= serializeNetwork(network);
@@ -227,7 +227,7 @@ class NetworkService {
     void listSecurityGroups(HTTPServerRequest req, HTTPServerResponse res) {
         auto tenantId = getTenantIdFromRequest(req);
         
-        JSONValue[] sgList;
+        Json[] sgList;
         foreach (sg; securityGroups) {
             if (sg.tenantId == tenantId) {
                 sgList ~= serializeSecurityGroup(sg);

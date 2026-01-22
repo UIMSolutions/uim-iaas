@@ -4,8 +4,8 @@ import uim.iaas.compute;
 /**
  * Compute Service - Manages virtual machines and container instances with multi-tenancy
  */
-class ComputeService ; UIMService {
-    private Instance[string] instances;
+class ComputeService : UIMService {
+    private InstanceEntity[string] instances;
 
     void setupRoutes(URLRouter router) {
         router.get("/health", &healthCheck);
@@ -26,7 +26,7 @@ class ComputeService ; UIMService {
     void listInstances(HTTPServerRequest req, HTTPServerResponse res) {
         auto tenantId = getTenantIdFromRequest(req);
         
-        JSONValue[] instanceList;
+        Json[] instanceList;
         foreach (instance; instances) {
             // Only show instances from the same tenant
             if (instance.tenantId == tenantId) {
@@ -60,11 +60,11 @@ class ComputeService ; UIMService {
         auto data = req.json;
         auto tenantId = getTenantIdFromRequest(req);
         
-        auto instance = Instance();
+        auto instance = new InstanceEntity();
         instance.id = randomUUID().toString();
-        instance.name = data["name"].str;
+        instance.name = data["name"].get!string;
         instance.tenantId = tenantId;
-        instance.type = data["type"].str;
+        instance.type = data["type"].get!string;
         instance.flavor = data["flavor"].get!string;
         instance.imageId = data["imageId"].get!string;
         instance.status = "creating";
@@ -73,30 +73,32 @@ class ComputeService ; UIMService {
         
         if ("metadata" in data && data["metadata"].type == Json.Type.object) {
             foreach (string key, value; data["metadata"].byKeyValue) {
-                instance.metadata[key] = value.get!string;
+                instance.metadata(key, value.get!string);
             }
         }
         
         if ("networkIds" in data) {
             foreach (netId; data["networkIds"]) {
-                instance.networkIds ~= netId.get!string;
+                instance.addNetworkId(netId.get!string);
             }
         }
         
         if ("volumeIds" in data) {
             foreach (volId; data["volumeIds"]) {
-                instance.volumeIds ~= volId.get!string;
+                instance.addVolumeId(volId.get!string);
             }
         }
         
         instances[instance.id] = instance;
         
         // Simulate async creation
-        runTask({
-            sleep(2.seconds);
-            instances[instance.id].status = "running";
-            instances[instance.id].updatedAt = Clock.currTime().toUnixTime();
-            logInfo("Instance %s is now running", instance.id);
+        runTask(()nothrow{
+            try {
+                sleep(2.seconds);
+                instances[instance.id].status = "running";
+                instances[instance.id].updatedAt = Clock.currTime().toUnixTime();
+                logInfo("Instance %s is now running", instance.id);
+            } catch (Exception e) {}
         });
         
         res.statusCode = HTTPStatus.created;
@@ -189,10 +191,12 @@ class ComputeService ; UIMService {
         instances[id].status = "restarting";
         instances[id].updatedAt = Clock.currTime().toUnixTime();
         
-        runTask({
-            sleep(1.seconds);
-            instances[id].status = "running";
-            instances[id].updatedAt = Clock.currTime().toUnixTime();
+        runTask(()nothrow{
+            try {
+                sleep(1.seconds);
+                instances[id].status = "running";
+                instances[id].updatedAt = Clock.currTime().toUnixTime();
+            } catch (Exception e) {}
         });
         
         res.writeJsonBody(serializeInstance(instances[id]));
@@ -207,16 +211,16 @@ class ComputeService ; UIMService {
     }
 
     void listFlavors(HTTPServerRequest req, HTTPServerResponse res) {
-        auto flavors = [
-            ["name": "small", "vcpus": 1, "ram": 1024, "disk": 10],
-            ["name": "medium", "vcpus": 2, "ram": 4096, "disk": 40],
-            ["name": "large", "vcpus": 4, "ram": 8192, "disk": 80],
-            ["name": "xlarge", "vcpus": 8, "ram": 16384, "disk": 160]
+        Json[] flavors = [
+            Json(["name": Json("small"), "vcpus": Json(1), "ram": Json(1024), "disk": Json(10)]),
+            Json(["name": Json("medium"), "vcpus": Json(2), "ram": Json(4096), "disk": Json(40)]),
+            Json(["name": Json("large"), "vcpus": Json(4), "ram": Json(8192), "disk": Json(80)]),
+            Json(["name": Json("xlarge"), "vcpus": Json(8), "ram": Json(16384), "disk": Json(160)])
         ];
-        res.writeJsonBody(["flavors": flavors]);
+        res.writeJsonBody(["flavors": Json(flavors)]);
     }
 
-    Json serializeInstance(Instance instance) {
+    Json serializeInstance(InstanceEntity instance) {
         return Json([
             "id": Json(instance.id),
             "name": Json(instance.name),

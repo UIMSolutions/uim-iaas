@@ -1,4 +1,4 @@
-public uim.iaas.compute.entities.instance;
+module uim.iaas.compute.entities.instance;
 
 import uim.iaas.compute;
 
@@ -47,11 +47,19 @@ class InstanceEntity : UIMEntity{
     @property string[] networkIds() { return _networkIds; }
     @property void networkIds(string[] value) { _networkIds = value; }
 
+    void addNetworkId(string netId) {
+        _networkIds ~= netId;
+    }
+
     // Lists of associated volume IDs
     protected string[] _volumeIds;
     @property string[] volumeIds() { return _volumeIds; }
     @property void volumeIds(string[] value) { _volumeIds = value; }
 
+    void addVolumeId(string volId) {
+        _volumeIds ~= volId;
+    }
+    
     // Timestamps
     protected long _createdAt;
     @property long createdAt() { return _createdAt; }
@@ -66,4 +74,7 @@ class InstanceEntity : UIMEntity{
     protected string[string] _metadata;
     @property string[string] metadata() { return _metadata; }
     @property void metadata(string[string] value) { _metadata = value; }
+
+    @property string metadata(string key) { return _metadata[key]; }
+    @property void metadata(string key, string value) { _metadata[key] = value; }
 }
