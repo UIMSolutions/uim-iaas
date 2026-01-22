@@ -1,0 +1,44 @@
+extends layout
+
+block content
+	.navbar
+		a.navbar-brand(href="/dashboard") UIM IaaS
+		.navbar-menu
+			a.nav-link.active(href="/compute") Compute
+			a.nav-link(href="/network") Network
+			a.nav-link(href="/storage") Storage
+			a.nav-link(href="/monitoring") Monitoring
+		.navbar-user
+			span= username
+			a.btn.btn-small.btn-secondary(href="/logout") Logout
+	
+	.container
+		.page-header
+			h2 Create Compute Instance
+		
+		.card(style="max-width: 600px;")
+			form(method="POST", action="/compute/create")
+				.form-group
+					label(for="name") Instance Name
+					input(type="text", id="name", name="name", required)
+				
+				.form-group
+					label(for="type") Type
+					select(id="type", name="type", required)
+						option(value="vm") Virtual Machine
+						option(value="container") Container
+				
+				.form-group
+					label(for="flavor") Flavor
+					select(id="flavor", name="flavor", required)
+						option(value="small") Small (1 vCPU, 2GB RAM)
+						option(value="medium") Medium (2 vCPU, 4GB RAM)
+						option(value="large") Large (4 vCPU, 8GB RAM)
+				
+				.form-group
+					label(for="imageId") Image ID
+					input(type="text", id="imageId", name="imageId", value="ubuntu-22.04", required)
+				
+				div(style="display: flex; gap: 1rem;")
+					a.btn.btn-secondary(href="/compute") Cancel
+					button.btn.btn-primary(type="submit") Create Instance

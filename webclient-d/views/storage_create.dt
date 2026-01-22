@@ -1,0 +1,37 @@
+extends layout
+
+block content
+	.navbar
+		a.navbar-brand(href="/dashboard") UIM IaaS
+		.navbar-menu
+			a.nav-link(href="/compute") Compute
+			a.nav-link(href="/network") Network
+			a.nav-link.active(href="/storage") Storage
+			a.nav-link(href="/monitoring") Monitoring
+		.navbar-user
+			span= username
+			a.btn.btn-small.btn-secondary(href="/logout") Logout
+	
+	.container
+		.page-header
+			h2 Create Storage Volume
+		
+		.card(style="max-width: 600px;")
+			form(method="POST", action="/storage/create")
+				.form-group
+					label(for="name") Volume Name
+					input(type="text", id="name", name="name", required)
+				
+				.form-group
+					label(for="type") Type
+					select(id="type", name="type", required)
+						option(value="block") Block Storage
+						option(value="object") Object Storage
+				
+				.form-group
+					label(for="sizeGB") Size (GB)
+					input(type="number", id="sizeGB", name="sizeGB", value="10", min="1", required)
+				
+				div(style="display: flex; gap: 1rem;")
+					a.btn.btn-secondary(href="/storage") Cancel
+					button.btn.btn-primary(type="submit") Create Volume

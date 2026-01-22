@@ -1,0 +1,60 @@
+extends layout
+
+block content
+	.navbar
+		a.navbar-brand(href="/dashboard") UIM IaaS
+		.navbar-menu
+			a.nav-link.active(href="/compute") Compute
+			a.nav-link(href="/network") Network
+			a.nav-link(href="/storage") Storage
+			a.nav-link(href="/monitoring") Monitoring
+		.navbar-user
+			span= username
+			a.btn.btn-small.btn-secondary(href="/logout") Logout
+	
+	.container
+		.page-header
+			h2 Compute Instances
+			a.btn.btn-primary(href="/compute/create") Create Instance
+		
+		- if (error)
+			.error= error
+		
+		- if (instances.length == 0)
+			.card(style="text-align: center; padding: 3rem;")
+				h3 No instances yet
+				p Create your first compute instance to get started
+		- else
+			.resource-list
+				- foreach (instance; instances)
+					.resource-card
+						.resource-header
+							div
+								.resource-title= instance["name"].get!string
+								span.status-badge(class="status-" ~ instance["status"].get!string)= instance["status"].get!string
+							.resource-actions
+								- if (instance["status"].get!string == "running")
+									form(method="POST", action="/compute/" ~ instance["id"].get!string ~ "/stop", style="display: inline;")
+										button.btn.btn-small.btn-secondary(type="submit") Stop
+								- else
+									form(method="POST", action="/compute/" ~ instance["id"].get!string ~ "/start", style="display: inline;")
+										button.btn.btn-small.btn-success(type="submit") Start
+								form(method="POST", action="/compute/" ~ instance["id"].get!string ~ "/delete", style="display: inline;")
+									button.btn.btn-small.btn-danger(type="submit", onclick="return confirm('Delete this instance?')") Delete
+						.resource-details
+							div
+								strong ID:
+								|  
+								= instance["id"].get!string
+							div
+								strong Type:
+								|  
+								= instance["type"].get!string
+							div
+								strong Flavor:
+								|  
+								= instance["flavor"].get!string
+							div
+								strong Image:
+								|  
+								= instance["imageId"].get!string

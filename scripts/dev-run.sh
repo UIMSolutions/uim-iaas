@@ -4,17 +4,47 @@
 
 set -e
 
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
 echo "Starting UIM IaaS Platform services locally..."
 
-# Start services in the background
-services=("auth-service:8084" "compute-service:8081" "storage-service:8082" "network-service:8083" "monitoring-service:8085" "api-gateway:8080")
+# Array of services and their ports
+declare -a services=(
+    "auth:8084"
+    "compute:8081"
+    "storage:8082"
+    "network:8083"
+    "monitoring:8085"
+    "gateway:8080"
+)
 
+# Array to track PIDs
+pids=()
+
+# Function to kill all services on exit
+cleanup() {
+    echo ""
+    echo "Stopping all services..."
+    for pid in "${pids[@]}"; do
+        if kill -0 "$pid" 2>/dev/null; then
+            kill "$pid" 2>/dev/null || true
+        fi
+    done
+    wait 2>/dev/null || true
+    echo "All services stopped."
+    exit 0
+}
+
+trap cleanup SIGINT SIGTERM EXIT
+
+# Start services in the background
 for service_port in "${services[@]}"; do
     IFS=':' read -r service port <<< "$service_port"
     echo "Starting $service on port $port..."
-    cd services/$service
-    dub run &
-    cd ../..
+    cd "$PROJECT_DIR/$service"
+    dub run > "/tmp/uim-iaas-$service.log" 2>&1 &
+    pids+=($!)
+    cd "$PROJECT_DIR"
     sleep 2
 done
 
@@ -29,6 +59,9 @@ echo "  - Storage Service: http://localhost:8082"
 echo "  - Network Service: http://localhost:8083"
 echo "  - Monitoring Service: http://localhost:8085"
 echo ""
+echo "Logs are available at /tmp/uim-iaas-*.log"
 echo "Press Ctrl+C to stop all services"
+echo ""
 
+# Wait for all background processes
 wait

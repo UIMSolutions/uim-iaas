@@ -1,0 +1,33 @@
+extends layout
+
+block content
+	.navbar
+		a.navbar-brand(href="/dashboard") UIM IaaS
+		.navbar-menu
+			a.nav-link(href="/compute") Compute
+			a.nav-link(href="/network") Network
+			a.nav-link(href="/storage") Storage
+			a.nav-link(href="/monitoring") Monitoring
+		.navbar-user
+			span= username
+			a.btn.btn-small.btn-secondary(href="/logout") Logout
+	
+	.container
+		h2(style="margin-bottom: 2rem;") Welcome to UIM IaaS Platform
+		
+		.metrics-grid
+			a.metric-card(href="/compute", style="text-decoration: none;")
+				h3 Compute Instances
+				p(style="margin-top: 1rem; color: var(--secondary);") Manage virtual machines and containers
+			
+			a.metric-card(href="/network", style="text-decoration: none;")
+				h3 Virtual Networks
+				p(style="margin-top: 1rem; color: var(--secondary);") Configure network infrastructure
+			
+			a.metric-card(href="/storage", style="text-decoration: none;")
+				h3 Storage Volumes
+				p(style="margin-top: 1rem; color: var(--secondary);") Manage persistent storage
+			
+			a.metric-card(href="/monitoring", style="text-decoration: none;")
+				h3 Monitoring
+				p(style="margin-top: 1rem; color: var(--secondary);") View system metrics and alerts

@@ -1,12 +1,16 @@
-name "iaas-gateway"
+name "gateway"
 description "API Gateway for UIM IaaS Platform"
 authors "Ozan Nurettin Süel"
 copyright "Copyright © 2018-2026, Ozan Nurettin Süel"
 license "Apache-2.0"
 
 targetType "executable"
-targetName "iaas-gateway"
+targetName "uim-iaas-gateway"
 
+license "Apache-2.0"
 dependency "vibe-d" version="~>0.10.3"
-
+dependency "uim-iaas:core" path=".."
+dependency "uim-framework:oop" version="~>26.1.2"
+targetType "executable"
+targetName "uim-iaas-gateway"
 mainSourceFile "source/app.d"

@@ -1,0 +1,46 @@
+extends layout
+
+block content
+	.navbar
+		a.navbar-brand(href="/dashboard") UIM IaaS
+		.navbar-menu
+			a.nav-link(href="/compute") Compute
+			a.nav-link.active(href="/network") Network
+			a.nav-link(href="/storage") Storage
+			a.nav-link(href="/monitoring") Monitoring
+		.navbar-user
+			span= username
+			a.btn.btn-small.btn-secondary(href="/logout") Logout
+	
+	.container
+		.page-header
+			h2 Virtual Networks
+			a.btn.btn-primary(href="/network/create") Create Network
+		
+		- if (error)
+			.error= error
+		
+		- if (networks.length == 0)
+			.card(style="text-align: center; padding: 3rem;")
+				h3 No networks yet
+				p Create your first virtual network to get started
+		- else
+			.resource-list
+				- foreach (network; networks)
+					.resource-card
+						.resource-header
+							div
+								.resource-title= network["name"].get!string
+								span.status-badge.status-active= network["status"].get!string
+							.resource-actions
+								form(method="POST", action="/network/" ~ network["id"].get!string ~ "/delete", style="display: inline;")
+									button.btn.btn-small.btn-danger(type="submit", onclick="return confirm('Delete this network?')") Delete
+						.resource-details
+							div
+								strong ID:
+								|  
+								= network["id"].get!string
+							div
+								strong CIDR:
+								|  
+								= network["cidr"].get!string

@@ -1,0 +1,31 @@
+extends layout
+
+block content
+	.navbar
+		a.navbar-brand(href="/dashboard") UIM IaaS
+		.navbar-menu
+			a.nav-link(href="/compute") Compute
+			a.nav-link.active(href="/network") Network
+			a.nav-link(href="/storage") Storage
+			a.nav-link(href="/monitoring") Monitoring
+		.navbar-user
+			span= username
+			a.btn.btn-small.btn-secondary(href="/logout") Logout
+	
+	.container
+		.page-header
+			h2 Create Virtual Network
+		
+		.card(style="max-width: 600px;")
+			form(method="POST", action="/network/create")
+				.form-group
+					label(for="name") Network Name
+					input(type="text", id="name", name="name", required)
+				
+				.form-group
+					label(for="cidr") CIDR Block
+					input(type="text", id="cidr", name="cidr", value="10.0.0.0/16", required)
+				
+				div(style="display: flex; gap: 1rem;")
+					a.btn.btn-secondary(href="/network") Cancel
+					button.btn.btn-primary(type="submit") Create Network

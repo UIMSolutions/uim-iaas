@@ -1,0 +1,38 @@
+extends layout
+
+block content
+	.navbar
+		a.navbar-brand(href="/dashboard") UIM IaaS
+		.navbar-menu
+			a.nav-link(href="/compute") Compute
+			a.nav-link(href="/network") Network
+			a.nav-link(href="/storage") Storage
+			a.nav-link.active(href="/monitoring") Monitoring
+		.navbar-user
+			span= username
+			a.btn.btn-small.btn-secondary(href="/logout") Logout
+	
+	.container
+		.page-header
+			h2 System Monitoring
+			a.btn.btn-secondary(href="/monitoring") Refresh
+		
+		- if (error)
+			.error= error
+		
+		.metrics-grid
+			.metric-card
+				h3 Active Instances
+				.metric-value= metrics["instances"].get!ulong
+			
+			.metric-card
+				h3 Networks
+				.metric-value= metrics["networks"].get!ulong
+			
+			.metric-card
+				h3 Storage Volumes
+				.metric-value= metrics["volumes"].get!ulong
+			
+			.metric-card
+				h3 System Health
+				.metric-value(style="color: var(--success);") Healthy

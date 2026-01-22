@@ -1,0 +1,12 @@
+name "webclient-d"
+description "Web client for UIM IaaS Platform using vibe.d"
+authors "Ozan Nurettin Süel"
+copyright "Copyright © 2026, UI Manufaktur"
+license "Apache-2.0"
+
+dependency "vibe-d" version="~>0.10.3"
+
+targetType "executable"
+targetName "webclient-d"
+
+versions "VibeDefaultMain"

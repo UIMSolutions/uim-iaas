@@ -1,0 +1,51 @@
+extends layout
+
+block content
+	.navbar
+		a.navbar-brand(href="/dashboard") UIM IaaS
+		.navbar-menu
+			a.nav-link(href="/compute") Compute
+			a.nav-link(href="/network") Network
+			a.nav-link.active(href="/storage") Storage
+			a.nav-link(href="/monitoring") Monitoring
+		.navbar-user
+			span= username
+			a.btn.btn-small.btn-secondary(href="/logout") Logout
+	
+	.container
+		.page-header
+			h2 Storage Volumes
+			a.btn.btn-primary(href="/storage/create") Create Volume
+		
+		- if (error)
+			.error= error
+		
+		- if (volumes.length == 0)
+			.card(style="text-align: center; padding: 3rem;")
+				h3 No volumes yet
+				p Create your first storage volume to get started
+		- else
+			.resource-list
+				- foreach (volume; volumes)
+					.resource-card
+						.resource-header
+							div
+								.resource-title= volume["name"].get!string
+								span.status-badge(class="status-" ~ volume["status"].get!string)= volume["status"].get!string
+							.resource-actions
+								form(method="POST", action="/storage/" ~ volume["id"].get!string ~ "/delete", style="display: inline;")
+									button.btn.btn-small.btn-danger(type="submit", onclick="return confirm('Delete this volume?')") Delete
+						.resource-details
+							div
+								strong ID:
+								|  
+								= volume["id"].get!string
+							div
+								strong Type:
+								|  
+								= volume["type"].get!string
+							div
+								strong Size:
+								|  
+								= volume["sizeGB"].get!long
+								|  GB

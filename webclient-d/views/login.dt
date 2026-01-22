@@ -1,0 +1,21 @@
+extends layout
+
+block content
+	.container(style="min-height: 100vh; display: flex; align-items: center; justify-content: center;")
+		.card(style="max-width: 400px; width: 100%;")
+			h1(style="text-align: center; color: var(--primary); margin-bottom: 2rem;") UIM IaaS Platform
+			h2(style="margin-bottom: 1.5rem;") Sign In
+			
+			- if (error)
+				.error= error
+			
+			form(method="POST", action="/login")
+				.form-group
+					label(for="username") Username
+					input(type="text", id="username", name="username", value="admin", required)
+				
+				.form-group
+					label(for="password") Password
+					input(type="password", id="password", name="password", value="admin123", required)
+				
+				button.btn.btn-primary(type="submit", style="width: 100%;") Login
