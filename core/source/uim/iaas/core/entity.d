@@ -20,4 +20,11 @@ class UIMEntity {
     protected long _updatedAt;
     @property long updatedAt() { return _updatedAt; }
     @property void updatedAt(long value) { _updatedAt = value; }
+
+    protected string[string] _metadata;
+    @property string[string] metadata() { return _metadata; }
+    @property void metadata(string[string] value) { _metadata = value; }
+
+    @property string metadata(string key) { return _metadata[key]; }
+    @property void metadata(string key, string value) { _metadata[key] = value; }
 }
