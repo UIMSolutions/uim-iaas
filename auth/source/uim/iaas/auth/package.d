@@ -1,7 +1,6 @@
 module uim.iaas.auth;
 
 public {
-    import vibe.vibe;
     import std.stdio;
     import std.json;
     import std.uuid;
@@ -11,6 +10,9 @@ public {
 }
 
 public {
+  import vibe.vibe;
+  import uim.iaas.core;
+
   import uim.iaas.auth.entities;
   import uim.iaas.auth.services;
 }

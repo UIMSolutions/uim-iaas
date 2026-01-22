@@ -10,7 +10,7 @@ class AuthService {
 
   this() {
     // Create default tenant
-    auto defaultTenant = TenantEntity();
+    auto defaultTenant = new TenantEntity();
     defaultTenant.id = randomUUID().toString();
     defaultTenant.name = "Default Tenant";
     defaultTenant.description = "Default system tenant";
@@ -21,7 +21,7 @@ class AuthService {
     tenants[defaultTenant.id] = defaultTenant;
 
     // Create default admin user
-    auto admin = UserEntity();
+    auto admin = new UserEntity();
     admin.id = randomUUID().toString();
     admin.username = "admin";
     admin.email = "admin@uim-iaas.local";
@@ -128,10 +128,10 @@ class AuthService {
       return;
     }
 
-    SessionEntity* foundSession = null;
-    foreach (ref session; sessions) {
+    SessionEntity foundSession = null;
+    foreach (session; sessions) {
       if (session.token == token) {
-        foundSession = &session;
+        foundSession = session;
         break;
       }
     }
@@ -146,8 +146,8 @@ class AuthService {
     foundSession.expiresAt = Clock.currTime().toUnixTime() + 3600 * 24;
 
     res.writeJsonBody([
-      "token": foundSession.token,
-      "expiresAt": foundSession.expiresAt
+      "token": foundSession.token.toJson,
+      "expiresAt": foundSession.expiresAt.toJson
     ]);
   }
 

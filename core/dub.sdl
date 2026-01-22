@@ -1,10 +1,9 @@
 name "core"
-description "API Gateway for UIM IaaS Platform"
+description "Core Library for UIM IaaS Platform"
 authors "Ozan Nurettin Süel"
 copyright "Copyright © 2026, UI Manufaktur"
 license "Apache-2.0"
-
+dependency "vibe-d" version="~>0.10.3"
+dependency "uim-framework:oop" version="~>26.1.2"
 targetType "library"
 targetName "uim-iaas-core"
-
-dependency "vibe-d" version="~>0.10.3"

@@ -1,8 +1,8 @@
-module uim.iaas.auth.models.session;
+module uim.iaas.auth.entities.session;
 
 import uim.iaas.auth;
 
-class SessionEntity : Entity {
+class SessionEntity : UIMEntity {
     this () {
         super();
     }

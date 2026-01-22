@@ -1,8 +1,8 @@
-module uim.iaas.auth.models.tenant;
+module uim.iaas.auth.entities.tenant;
 
 import uim.iaas.auth;
 
-class TenantEntity : Entity {
+class TenantEntity : UIMEntity {
     string name;
     string description;
     bool active;

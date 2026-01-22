@@ -1,8 +1,8 @@
-module uim.iaas.auth.models.user;
+module uim.iaas.auth.entities.user;
 
 import uim.iaas.auth;
 
-class UserEntity : Entity {
+class UserEntity : UIMEntity {
     this () {
         super();
     }
