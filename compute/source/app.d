@@ -1,10 +1,5 @@
 module app;
 
-import vibe.vibe;
-import std.stdio;
-import std.uuid;
-import std.datetime;
-
 void main() {
     auto settings = new HTTPServerSettings;
     settings.port = 8081;

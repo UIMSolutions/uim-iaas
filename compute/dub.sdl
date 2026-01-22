@@ -8,5 +8,6 @@ targetType "executable"
 targetName "uim-iaas-compute"
 
 dependency "vibe-d" version="~>0.10.3"
+dependency "uim-iaas:core" path=".."
 
 mainSourceFile "source/app.d"

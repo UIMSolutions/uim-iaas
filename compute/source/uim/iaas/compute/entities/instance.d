@@ -1,8 +1,11 @@
-public uim.iaas.compute.entities;
+public uim.iaas.compute.entities.instance;
 
-import uim.iaas;
+import uim.iaas.compute;
 
 class InstanceEntity : UIMEntity{
+    this() {
+        super();
+    }
 
     // Getters and Setters
     protected string _id;

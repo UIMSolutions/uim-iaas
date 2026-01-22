@@ -1,7 +1,10 @@
+module uim.iaas.compute.services.compute;
+
+import uim.iaas.compute;
 /**
  * Compute Service - Manages virtual machines and container instances with multi-tenancy
  */
-class ComputeService {
+class ComputeService ; UIMService {
     private Instance[string] instances;
 
     void setupRoutes(URLRouter router) {
