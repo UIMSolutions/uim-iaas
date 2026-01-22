@@ -27,6 +27,9 @@ class MetricEntity : UIMEntity {
     @property string[string] labels() { return _labels; }
     @property void labels(string[string] value) { _labels = value; }
 
+    @property string labels(string key) { return _labels[key]; }
+    @property void labels(string key, string value) { _labels[key] = value; }
+
     protected long _timestamp;
     @property long timestamp() { return _timestamp; }
     @property void timestamp(long value) { _timestamp = value; }

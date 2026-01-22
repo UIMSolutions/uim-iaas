@@ -1,12 +1,12 @@
-name "monitoring-service"
-description "Monitoring and Metrics Service for UIM IaaS Platform"
+name "monitoring"
+description "Monitoring Service for UIM IaaS Platform"
 authors "Ozan Nurettin Süel"
-copyright "Copyright © 2026, UI Manufaktur"
+copyright "Copyright © 2018-2026, Ozan Nurettin Süel"
+
 license "Apache-2.0"
-
-targetType "executable"
-targetName "monitoring-service"
-
 dependency "vibe-d" version="~>0.10.3"
-
+dependency "uim-iaas:core" path=".."
+dependency "uim-framework:oop" version="~>26.1.2"
+targetType "executable"
+targetName "uim-iaas-monitoring"
 mainSourceFile "source/app.d"
