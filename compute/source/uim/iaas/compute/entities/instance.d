@@ -12,16 +12,6 @@ class InstanceEntity : IaasEntity {
     super();
   }
 
-  // Getters and Setters
-  protected string _id;
-  @property string id() {
-    return _id;
-  }
-
-  @property void id(string value) {
-    _id = value;
-  }
-
   // Name of the instance
   protected string _name;
   @property string name() {
@@ -108,44 +98,6 @@ class InstanceEntity : IaasEntity {
 
   void addVolumeId(string volId) {
     _volumeIds ~= volId;
-  }
-
-  // Timestamps
-  protected long _createdAt;
-  @property long createdAt() {
-    return _createdAt;
-  }
-
-  @property void createdAt(long value) {
-    _createdAt = value;
-  }
-
-  // Updated timestamp
-  protected long _updatedAt;
-  @property long updatedAt() {
-    return _updatedAt;
-  }
-
-  @property void updatedAt(long value) {
-    _updatedAt = value;
-  }
-
-  // Metadata key-value pairs
-  protected string[string] _metadata;
-  @property string[string] metadata() {
-    return _metadata;
-  }
-
-  @property void metadata(string[string] value) {
-    _metadata = value;
-  }
-
-  @property string metadata(string key) {
-    return _metadata[key];
-  }
-
-  @property void metadata(string key, string value) {
-    _metadata[key] = value;
   }
 
   override Json toJson() {

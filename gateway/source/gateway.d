@@ -45,30 +45,37 @@ class ApiGateway {
     }
 
     void healthCheck(HTTPServerRequest req, HTTPServerResponse res) {
+        writeln("Health check requested");
         res.writeJsonBody(["status": "healthy", "service": "api-gateway"]);
     }
 
     void proxyToCompute(HTTPServerRequest req, HTTPServerResponse res) {
+        writeln("Proxying to Compute Service: ", req.requestPath);
         proxyRequest(req, res, computeServiceUrl);
     }
 
     void proxyToStorage(HTTPServerRequest req, HTTPServerResponse res) {
+        writeln("Proxying to Storage Service: ", req.requestPath);
         proxyRequest(req, res, storageServiceUrl);
     }
 
     void proxyToNetwork(HTTPServerRequest req, HTTPServerResponse res) {
+        writeln("Proxying to Network Service: ", req.requestPath);
         proxyRequest(req, res, networkServiceUrl);
     }
 
     void proxyToAuth(HTTPServerRequest req, HTTPServerResponse res) {
+        writeln("Proxying to Auth Service: ", req.requestPath);
         proxyRequest(req, res, authServiceUrl);
     }
 
     void proxyToMonitoring(HTTPServerRequest req, HTTPServerResponse res) {
+        writeln("Proxying to Monitoring Service: ", req.requestPath);
         proxyRequest(req, res, monitoringServiceUrl);
     }
 
     void proxyRequest(HTTPServerRequest req, HTTPServerResponse res, string targetUrl) {
+        writeln("Proxying request to: ", targetUrl, req.requestPath.toString());
         try {
             // Extract tenant ID from auth token by calling auth service
             string tenantId = "default";
@@ -96,23 +103,25 @@ class ApiGateway {
                 }
             }
             
-            auto client = requestHTTP(targetUrl ~ req.requestPath),
+            requestHTTP(targetUrl ~ req.requestPath.toString(),
                 (scope clientReq) {
                     clientReq.method = req.method;
-                    foreach (key, value; req.headers) {
-                        clientReq.headers[key] = value;
+                    // Copy headers
+                    foreach (k; req.headers.keys) {
+                        clientReq.headers[k] = req.headers[k];
                     }
                     // Add tenant ID header for backend services
                     clientReq.headers["X-Tenant-ID"] = tenantId;
                     
-                    if (req.bodyReader.empty) {
+                    if (!req.bodyReader.empty) {
                         clientReq.writeBody(cast(ubyte[])req.json.toString());
                     }
                 },
                 (scope clientRes) {
                     res.statusCode = clientRes.statusCode;
-                    foreach (key, value; clientRes.headers) {
-                        res.headers[key] = value;
+                    // Copy response headers
+                    foreach (k; clientRes.headers.keys) {
+                        res.headers[k] = clientRes.headers[k];
                     }
                     res.bodyWriter.write(clientRes.bodyReader);
                 }
@@ -142,13 +151,14 @@ class ApiGateway {
 
     bool checkServiceHealth(string serviceUrl) {
         try {
+            bool isHealthy = false;
             requestHTTP(serviceUrl ~ "/health",
                 (scope req) {},
                 (scope res) {
-                    return res.statusCode == HTTPStatus.ok;
+                    isHealthy = res.statusCode == HTTPStatus.ok;
                 }
             );
-            return true;
+            return isHealthy;
         } catch (Exception) {
             return false;
         }
