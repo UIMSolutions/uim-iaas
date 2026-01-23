@@ -2,7 +2,7 @@ module uim.iaas.auth.entities.apikey;
 
 import uim.iaas.auth;
 
-class ApiKeyEntity : UIMEntity {
+class ApiKeyEntity : IaasEntity {
     this () {
         super();
     }

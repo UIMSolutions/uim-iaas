@@ -2,7 +2,7 @@ module uim.iaas.network.entities.subnet;
 
 import uim.iaas.network;
 
-class SubnetEntity : UIMEntity {
+class SubnetEntity : IaasEntity {
     this() {
         super();
     }  

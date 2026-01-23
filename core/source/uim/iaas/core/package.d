@@ -6,6 +6,8 @@ public {
   import std.uuid;
   import std.datetime;
 
+  import uim.oop;
+
   import uim.iaas.core.entity;
   import uim.iaas.core.service;
 }

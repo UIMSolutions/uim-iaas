@@ -404,7 +404,7 @@ Authentication:
 @startuml
 !define ENTITY class
 
-abstract class UIMEntity {
+abstract class IaasEntity {
   - _id: string
   - _createdAt: long
   - _updatedAt: long
@@ -457,7 +457,7 @@ class AuthService {
   - serializeApiKey(ApiKeyEntity): Json
 }
 
-class UserEntity extends UIMEntity {
+class UserEntity extends IaasEntity {
   - _username: string
   - _email: string
   - _passwordHash: string
@@ -482,7 +482,7 @@ class UserEntity extends UIMEntity {
   + lastLogin(long): void
 }
 
-class TenantEntity extends UIMEntity {
+class TenantEntity extends IaasEntity {
   - _name: string
   - _description: string
   - _active: bool
@@ -498,7 +498,7 @@ class TenantEntity extends UIMEntity {
   + metadata(string[string]): void
 }
 
-class SessionEntity extends UIMEntity {
+class SessionEntity extends IaasEntity {
   - _userId: string
   - _tenantId: string
   - _token: string
@@ -514,7 +514,7 @@ class SessionEntity extends UIMEntity {
   + expiresAt(long): void
 }
 
-class ApiKeyEntity extends UIMEntity {
+class ApiKeyEntity extends IaasEntity {
   - _tenantId: string
   - _name: string
   - _description: string

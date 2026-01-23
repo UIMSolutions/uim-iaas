@@ -2,7 +2,7 @@ module uim.iaas.network.entities.securitygroup;
 
 import uim.iaas.network;
 
-class SecurityGroupEntity : UIMEntity {
+class SecurityGroupEntity : IaasEntity {
     this() {
         super();
     }   

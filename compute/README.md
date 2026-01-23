@@ -284,7 +284,7 @@ Headers:
 @startuml
 !define ENTITY class
 
-abstract class UIMEntity {
+abstract class IaasEntity {
 }
 
 abstract class UIMService {
@@ -307,7 +307,7 @@ class ComputeService extends UIMService {
   - serializeInstance(InstanceEntity): Json
 }
 
-class InstanceEntity extends UIMEntity {
+class InstanceEntity extends IaasEntity {
   - _id: string
   - _name: string
   - _tenantId: string

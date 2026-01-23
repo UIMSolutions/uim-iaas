@@ -2,7 +2,7 @@ module uim.iaas.storage.entities.bucket;
 
 import uim.iaas.storage;
 
-class BucketEntity : UIMEntity {
+class BucketEntity : IaasEntity {
     this() {
         super();
     }

@@ -2,7 +2,7 @@ module uim.iaas.auth.entities.user;
 
 import uim.iaas.auth;
 
-class UserEntity : UIMEntity {
+class UserEntity : IaasEntity {
     this () {
         super();
     }

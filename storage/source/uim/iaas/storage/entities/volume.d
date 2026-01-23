@@ -2,7 +2,7 @@ module uim.iaas.storage.entities.volume;
 
 import uim.iaas.storage;
 
-class VolumeEntity : UIMEntity {
+class VolumeEntity : IaasEntity {
     this() {
         super();
     }

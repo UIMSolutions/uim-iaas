@@ -2,7 +2,7 @@ module uim.iaas.compute.entities.instance;
 
 import uim.iaas.compute;
 
-class InstanceEntity : UIMEntity{
+class InstanceEntity : IaasEntity{
     this() {
         super();
     }

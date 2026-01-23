@@ -1,29 +1,106 @@
-# Network Service
-
-The Network Service manages virtual networks, subnets, and security groups with multi-tenancy support in the UIM IaaS platform.
+# UIM IaaS Network Service
 
 ## Overview
 
-This service provides software-defined networking (SDN) capabilities for the UIM IaaS platform. It manages virtual networks, subnets, security groups, and network access control rules with full multi-tenant isolation.
+The **UIM IaaS Network Service** is a sophisticated multi-tenant virtual networking platform that provides Software-Defined Networking (SDN) capabilities for cloud infrastructure. Built with the D programming language and vibe.d framework, it enables creation and management of virtual networks, subnets, and security groups with comprehensive isolation and access control.
 
 **Service Name:** `uim-iaas-network`  
 **Default Port:** 8083  
+**NAF Version:** v4  
 **Version:** 26.1.2 compatible
 
 ## Features
 
-- ✅ Virtual network (VPC) management
-- ✅ Subnet creation and management
-- ✅ Security group management with firewall rules
-- ✅ Multi-tenant network isolation
-- ✅ CIDR-based IP address management
-- ✅ DHCP configuration for subnets
-- ✅ DNS server configuration
-- ✅ Ingress and egress security rules
+- ✅ Virtual network (VPC) management with CIDR-based addressing
+- ✅ Subnet creation and management within networks
+- ✅ Security group management with firewall rules (ingress/egress)
+- ✅ Multi-tenant network isolation and security
+- ✅ DHCP configuration for dynamic IP allocation
+- ✅ DNS server configuration per subnet
+- ✅ Rule-based access control (protocol, port range, CIDR)
 - ✅ RESTful API with JSON responses
 - ✅ Health check endpoint for monitoring
+- ✅ Dependency validation (prevent deletion of networks with subnets)
+- ✅ NAF v4 architecture alignment
 
-## NAF v4 Architecture Description
+## NAF v4 Architecture Alignment
+
+This service adheres to the **NATO Architecture Framework (NAF) Version 4** standards, ensuring structured architecture documentation and operational clarity.
+
+### NAF v4 Views Implemented
+
+#### NOV-1: High-Level Operational Concept
+The Network Service operates as the networking fabric layer that:
+- Provisions isolated virtual networks with CIDR-based addressing
+- Creates and manages subnets within virtual networks
+- Implements security groups with rule-based access control
+- Provides network segmentation and traffic isolation per tenant
+- Enables secure communication between compute, storage, and other services
+
+#### NOV-2: Operational Node Connectivity
+```
+┌────────────────────────────────────────────────────┐
+│               Network Service Core                 │
+│  ┌──────────────┐  ┌──────────────┐  ┌─────────┐ │
+│  │   Virtual    │  │    Subnet    │  │Security │ │
+│  │   Networks   │  │  Management  │  │ Groups  │ │
+│  └──────┬───────┘  └──────┬───────┘  └────┬────┘ │
+└─────────┼──────────────────┼───────────────┼──────┘
+          │                  │               │
+    ┌─────▼──────┐    ┌─────▼──────┐  ┌────▼─────┐
+    │  Compute   │    │  Storage   │  │   Auth   │
+    │  Service   │    │  Service   │  │ Service  │
+    └────────────┘    └────────────┘  └──────────┘
+```
+
+#### NOV-3: Operational Information Requirements
+**Information Exchanged:**
+- Network topology and CIDR allocations
+- Subnet configuration and gateway information
+- Security group rules (ingress/egress)
+- Tenant isolation metadata
+- DNS server configurations
+
+#### NSV-1: Systems Interface Description
+The Network Service exposes RESTful HTTP interfaces for:
+- Virtual network lifecycle management (CRUD)
+- Subnet provisioning and configuration
+- Security group creation and rule management
+- Multi-tenant network isolation
+
+#### NSV-2: Systems Resource Flow
+```
+┌──────────────┐
+│   Client     │
+└──────┬───────┘
+       │ POST /networks (CIDR: 10.0.0.0/16)
+       ▼
+┌──────────────────┐
+│ Network Service  │ Creates NetworkEntity
+└──────┬───────────┘
+       │ Network ID: net-123
+       │ POST /subnets (CIDR: 10.0.1.0/24, networkId: net-123)
+       ▼
+┌──────────────────┐
+│ Subnet Created   │ Gateway: 10.0.1.1, DHCP: enabled
+└──────┬───────────┘
+       │ Subnet ID: subnet-456
+       │ POST /security-groups (name: web-sg)
+       ▼
+┌──────────────────┐
+│ Security Group   │ Add rules (TCP 80, 443)
+└──────────────────┘
+```
+
+#### NSV-4: Systems Functionality Description
+
+**Core Functions:**
+1. **Virtual Network Management**: CIDR-based network provisioning with status tracking
+2. **Subnet Segmentation**: Network subdivision with gateway and DHCP configuration
+3. **Security Group Control**: Rule-based firewall management (ingress/egress)
+4. **Multi-tenancy**: Complete network isolation per tenant
+5. **DNS Configuration**: Configurable DNS servers per subnet
+6. **Network Validation**: Prevents deletion of networks with active subnets
 
 ### A1 - Meta Data Definitions
 
@@ -389,7 +466,7 @@ Headers:
 @startuml
 !define ENTITY class
 
-abstract class UIMEntity {
+abstract class IaasEntity {
   - _id: string
   - _createdAt: long
   - _updatedAt: long
@@ -438,7 +515,7 @@ class NetworkService {
   - serializeSecurityGroup(SecurityGroupEntity): Json
 }
 
-class NetworkEntity extends UIMEntity {
+class NetworkEntity extends IaasEntity {
   - _name: string
   - _tenantId: string
   - _cidr: string
@@ -454,7 +531,7 @@ class NetworkEntity extends UIMEntity {
   + status(string): void
 }
 
-class SubnetEntity extends UIMEntity {
+class SubnetEntity extends IaasEntity {
   - _name: string
   - _tenantId: string
   - _networkId: string
@@ -479,7 +556,7 @@ class SubnetEntity extends UIMEntity {
   + dnsServers(string[]): void
 }
 
-class SecurityGroupEntity extends UIMEntity {
+class SecurityGroupEntity extends IaasEntity {
   - _name: string
   - _tenantId: string
   - _description: string
@@ -495,7 +572,7 @@ class SecurityGroupEntity extends UIMEntity {
   + rules(RuleEntity[]): void
 }
 
-class RuleEntity extends UIMEntity {
+class RuleEntity extends IaasEntity {
   - _direction: string
   - _protocol: string
   - _portMin: int

@@ -2,7 +2,7 @@ module uim.iaas.network.entities.rule;
 
 import uim.iaas.network;
 
-class RuleEntity : UIMEntity {
+class RuleEntity : IaasEntity {
     this() {
         super();
     }     
