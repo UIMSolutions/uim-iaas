@@ -19,14 +19,17 @@ spec:
     spec:
       containers:
       - name: storage-service
-        image: uim-iaas/storage-service:latest
+        image: uim-iaas-storage:latest
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8082
           name: http
+          protocol: TCP
         env:
         - name: PORT
           value: "8082"
+        - name: SERVICE_NAME
+          value: "storage-service"
         envFrom:
         - configMapRef:
             name: uim-iaas-config
@@ -34,21 +37,33 @@ spec:
           httpGet:
             path: /health
             port: 8082
-          initialDelaySeconds: 10
+            scheme: HTTP
+          initialDelaySeconds: 15
           periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
         readinessProbe:
           httpGet:
             path: /health
             port: 8082
-          initialDelaySeconds: 5
+            scheme: HTTP
+          initialDelaySeconds: 10
           periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
         resources:
           requests:
             memory: "256Mi"
             cpu: "200m"
           limits:
-            memory: "512Mi"
+            memory: "1Gi"
             cpu: "1000m"
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          runAsUser: 1000
 ---
 apiVersion: v1
 kind: Service

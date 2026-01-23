@@ -7,6 +7,8 @@ module uim.iaas.auth.services.auth;
 
 import uim.iaas.auth;
 
+@safe:
+
 class AuthService {
   private UserEntity[string] users;
   private ApiKeyEntity[string] apiKeys;
@@ -77,10 +79,10 @@ class AuthService {
     auto username = data["username"].get!string;
     auto password = data["password"].get!string;
 
-    UserEntity* foundUser = null;
-    foreach (ref user; users) {
+    UserEntity foundUser = null;
+    foreach (user; users) {
       if (user.username == username && user.active) {
-        foundUser = &user;
+        foundUser = user;
         break;
       }
     }
@@ -88,7 +90,7 @@ class AuthService {
     if (foundUser is null || foundUser.passwordHash != hashPassword(password)) {
       res.statusCode = HTTPStatus.unauthorized;
       res.writeJsonBody(["error": "Invalid credentials"]);
-      
+
       SessionEntity session = new SessionEntity();
       session.tenantId = foundUser.tenantId;
       session.token = generateToken();
@@ -99,10 +101,10 @@ class AuthService {
       foundUser.lastLogin = Clock.currTime().toUnixTime();
 
       res.writeJsonBody([
-        "token": Json(session.token),
-        "expiresAt": Json(session.expiresAt),
-        "tenantId": Json(session.tenantId),
-        "user": serializeUser(*foundUser)
+        "token": session.token.toJson,
+        "expiresAt": session.expiresAt.toJson,
+        "tenantId": session.tenantId.toJson,
+        "user": foundUser.toJson()
       ]);
     }
   }
@@ -160,7 +162,10 @@ class AuthService {
     auto token = getTokenFromRequest(req);
     if (token.length == 0) {
       res.statusCode = HTTPStatus.unauthorized;
-      res.writeJsonBody(["valid": Json(false), "error": Json("No token provided")]);
+      res.writeJsonBody([
+        "valid": Json(false),
+        "error": Json("No token provided")
+      ]);
       return;
     }
 
@@ -172,7 +177,7 @@ class AuthService {
               "tenantId": session.tenantId.toJson,
               "valid": Json(true),
               "userId": session.userId.toJson,
-              "user": serializeUser(users[session.userId])
+              "user": users[session.userId].toJson()
             ]);
             return;
           }
@@ -182,9 +187,9 @@ class AuthService {
 
     res.statusCode = HTTPStatus.unauthorized;
     res.writeJsonBody([
-        "valid": Json(false),
-        "error": Json("Invalid or expired token")
-      ]);
+      "valid": Json(false),
+      "error": Json("Invalid or expired token")
+    ]);
   }
 
   void listUsers(HTTPServerRequest req, HTTPServerResponse res) {
@@ -194,13 +199,10 @@ class AuthService {
       return;
     }
     auto tenantId = getTenantIdFromRequest(req);
-    Json[] userList;
-    foreach (user; users) {
-      // Only show users from the same tenant
-      if (user.tenantId == tenantId) {
-        userList ~= serializeUser(user);
-      }
-    }
+    Json[] userList = users.byValue
+      .filter!(user => user.tenantId == tenantId)
+      .map!(user => user.toJson)
+      .array;
     res.writeJsonBody(Json(["users": Json(userList)]));
   }
 
@@ -218,7 +220,7 @@ class AuthService {
       return;
     }
 
-    res.writeJsonBody(serializeUser(users[id]));
+    res.writeJsonBody(users[id].toJson());
   }
 
   void createUser(HTTPServerRequest req, HTTPServerResponse res) {
@@ -245,7 +247,7 @@ class AuthService {
     users[user.id] = user;
 
     res.statusCode = HTTPStatus.created;
-    res.writeJsonBody(serializeUser(user));
+    res.writeJsonBody(user.toJson());
   }
 
   void updateUser(HTTPServerRequest req, HTTPServerResponse res) {
@@ -272,7 +274,7 @@ class AuthService {
     if ("password" in data)
       users[id].passwordHash = hashPassword(data["password"].get!string);
 
-    res.writeJsonBody(serializeUser(users[id]));
+    res.writeJsonBody(users[id].toJson());
   }
 
   void deleteUser(HTTPServerRequest req, HTTPServerResponse res) {
@@ -301,10 +303,9 @@ class AuthService {
       return;
     }
 
-    Json[] keyList;
-    foreach (apiKey; apiKeys) {
-      keyList ~= serializeApiKey(apiKey);
-    }
+    Json[] keyList = apiKeys.byValue
+      .map!(apiKey => apiKey.toJson)
+      .array;
     res.writeJsonBody(Json(["apiKeys": Json(keyList)]));
   }
 
@@ -317,7 +318,7 @@ class AuthService {
 
     auto data = req.json;
 
-    ApiKeyEntity apiKey;
+    ApiKeyEntity apiKey = new ApiKeyEntity();
     apiKey.id = randomUUID().toString();
     apiKey.key = generateToken();
     apiKey.userId = data["userId"].get!string;
@@ -327,15 +328,13 @@ class AuthService {
     apiKey.expiresAt = apiKey.createdAt + 3600 * 24 * 365; // 1 year
 
     if ("scopes" in data) {
-      foreach (scope_; data["scopes"]) {
-        apiKey.scopes ~= scope_.get!string;
-      }
+      data["scopes"].byKeyValue.each!(kv => apiKey.addScopes(kv.value.get!string));
     }
 
     apiKeys[apiKey.id] = apiKey;
 
     res.statusCode = HTTPStatus.created;
-    res.writeJsonBody(serializeApiKey(apiKey));
+    res.writeJsonBody(apiKey.toJson());
   }
 
   void deleteApiKey(HTTPServerRequest req, HTTPServerResponse res) {
@@ -381,12 +380,8 @@ class AuthService {
     if (token.length == 0)
       return false;
 
-    foreach (session; sessions) {
-      if (session.token == token && session.expiresAt > Clock.currTime().toUnixTime()) {
-        return true;
-      }
-    }
-    return false;
+    return sessions.byValue.any!(session => session.token == token && session.expiresAt > Clock.currTime()
+        .toUnixTime());
   }
 
   void listTenants(HTTPServerRequest req, HTTPServerResponse res) {
@@ -396,10 +391,9 @@ class AuthService {
       return;
     }
 
-    Json[] tenantList;
-    foreach (tenant; tenants) {
-      tenantList ~= serializeTenant(tenant);
-    }
+    Json[] tenantList = tenants.byValue
+      .map!(tenant => tenant.toJson)
+      .array;
     res.writeJsonBody(Json(["tenants": Json(tenantList)]));
   }
 
@@ -417,7 +411,7 @@ class AuthService {
       return;
     }
 
-    res.writeJsonBody(serializeTenant(tenants[id]));
+    res.writeJsonBody(tenants[id].toJson());
   }
 
   void createTenant(HTTPServerRequest req, HTTPServerResponse res) {
@@ -437,16 +431,16 @@ class AuthService {
     tenant.createdAt = Clock.currTime().toUnixTime();
     tenant.updatedAt = tenant.createdAt;
 
-    if ("metadata" in data && data["metadata"].type == Json.Type.object) {
-      foreach (string key, value; data["metadata"].byKeyValue) {
-        tenant.metadata[key] = value.get!string;
+    if ("metadata" in data && data["metadata"].isObject) {
+      foreach (string key, value; data["metadata"].toMap) {
+        tenant.metadata(key, value.get!string);
       }
     }
 
     tenants[tenant.id] = tenant;
 
     res.statusCode = HTTPStatus.created;
-    res.writeJsonBody(serializeTenant(tenant));
+    res.writeJsonBody(tenant.toJson());
   }
 
   void updateTenant(HTTPServerRequest req, HTTPServerResponse res) {
@@ -470,15 +464,15 @@ class AuthService {
       tenants[id].description = data["description"].get!string;
     if ("active" in data)
       tenants[id].active = data["active"].get!bool;
-    if ("metadata" in data && data["metadata"].type == Json.Type.object) {
+    if ("metadata" in data && data["metadata"].isObject) {
       tenants[id].metadata.clear();
-      foreach (string key, value; data["metadata"].byKeyValue) {
-        tenants[id].metadata[key] = value.get!string;
+      foreach (string key, value; data["metadata"].toMap) {
+        tenants[id].metadata(key, value.get!string);
       }
     }
     tenants[id].updatedAt = Clock.currTime().toUnixTime();
 
-    res.writeJsonBody(serializeTenant(tenants[id]));
+    res.writeJsonBody(tenants[id].toJson());
   }
 
   void deleteTenant(HTTPServerRequest req, HTTPServerResponse res) {
@@ -496,7 +490,7 @@ class AuthService {
     }
 
     // Check if tenant has users
-    foreach (user; users) {
+    foreach (user; users.byValue) {
       if (user.tenantId == id) {
         res.statusCode = HTTPStatus.badRequest;
         res.writeJsonBody([
@@ -516,55 +510,12 @@ class AuthService {
     if (token.length == 0)
       return "";
 
-    foreach (session; sessions) {
+    foreach (session; sessions.byValue) {
       if (session.token == token && session.expiresAt >= Clock.currTime()
         .toUnixTime()) {
         return session.tenantId;
       }
     }
     return "";
-  }
-
-  Json serializeUser(UserEntity user) {
-    return Json([
-      "id": Json(user.id),
-      "username": Json(user.username),
-      "email": Json(user.email),
-      "tenantId": Json(user.tenantId),
-      "role": Json(user.role),
-      "active": Json(user.active),
-      "createdAt": Json(user.createdAt),
-      "lastLogin": Json(user.lastLogin)
-    ]);
-  }
-
-  Json serializeTenant(TenantEntity tenant) {
-    return Json([
-      "id": Json(tenant.id),
-      "name": Json(tenant.name),
-      "description": Json(tenant.description),
-      "active": Json(tenant.active),
-      "createdAt": Json(tenant.createdAt),
-      "updatedAt": Json(tenant.updatedAt),
-      "metadata": serializeToJson(tenant.metadata)
-    ]);
-  }
-
-  Json serializeApiKey(ApiKeyEntity apiKey) {
-    Json[] scopesArray;
-    foreach (scope_; apiKey.scopes) {
-      scopesArray ~= Json(scope_);
-    }
-
-    return Json([
-      "id": Json(apiKey.id),
-      "key": Json(apiKey.key),
-      "userId": Json(apiKey.userId),
-      "name": Json(apiKey.name),
-      "scopes": Json(scopesArray),
-      "active": Json(apiKey.active),
-      "createdAt": Json(apiKey.createdAt),
-      "expiresAt": Json(apiKey.expiresAt)
-    ]);
   }
 }

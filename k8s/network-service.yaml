@@ -19,14 +19,17 @@ spec:
     spec:
       containers:
       - name: network-service
-        image: uim-iaas/network-service:latest
+        image: uim-iaas-network:latest
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8083
           name: http
+          protocol: TCP
         env:
         - name: PORT
           value: "8083"
+        - name: SERVICE_NAME
+          value: "network-service"
         envFrom:
         - configMapRef:
             name: uim-iaas-config
@@ -34,21 +37,33 @@ spec:
           httpGet:
             path: /health
             port: 8083
-          initialDelaySeconds: 10
+            scheme: HTTP
+          initialDelaySeconds: 15
           periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
         readinessProbe:
           httpGet:
             path: /health
             port: 8083
-          initialDelaySeconds: 5
+            scheme: HTTP
+          initialDelaySeconds: 10
           periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
         resources:
           requests:
-            memory: "128Mi"
+            memory: "256Mi"
             cpu: "100m"
           limits:
-            memory: "256Mi"
+            memory: "512Mi"
             cpu: "500m"
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          runAsUser: 1000
 ---
 apiVersion: v1
 kind: Service

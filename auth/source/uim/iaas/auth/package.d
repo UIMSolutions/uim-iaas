@@ -15,7 +15,6 @@ public {
 }
 
 public {
-  import vibe.vibe;
   import uim.oop;
   import uim.iaas.core;
 
