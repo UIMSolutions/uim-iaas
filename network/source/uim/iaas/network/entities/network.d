@@ -50,7 +50,7 @@ class NetworkEntity : IaasEntity {
     _status = value;
   }
 
-  Json toJson() {
+  override Json toJson() {
     return super.toJson.update([
       "name": _name.toJson,
       "tenantId": _tenantId.toJson,

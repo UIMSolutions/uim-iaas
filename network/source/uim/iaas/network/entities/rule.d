@@ -58,7 +58,7 @@ class RuleEntity : IaasEntity {
         _cidr = value;
     }
 
-    Json toJson() {
+    override Json toJson() {
         return super.toJson().update([
             "direction": _direction.toJson,
             "protocol": _protocol.toJson,

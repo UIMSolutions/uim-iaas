@@ -66,3 +66,4 @@ class SecurityGroupEntity : IaasEntity {
       "rules": rulesList.toJson
     ]);
   }
+}

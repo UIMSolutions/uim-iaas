@@ -117,7 +117,7 @@ class NetworkService {
   void listSubnets(HTTPServerRequest req, HTTPServerResponse res) {
     auto tenantId = getTenantIdFromRequest(req);
 
-    Json[] subnetList = subnets.filter!(subnet => subnet.tenantId == tenantId).map!(subnet => subnet.toJson).array;
+    Json[] subnetList = subnets.values.filter!(subnet => subnet.tenantId == tenantId).map!(subnet => subnet.toJson).array;
     res.writeJsonBody(["subnets": subnetList]);
   }
 
@@ -153,7 +153,7 @@ class NetworkService {
 
     if ("dnsServers" in data) {
       foreach (dns; data["dnsServers"]) {
-        subnet.dnsServers ~= dns.get!string;
+        subnet.addDnsServer(dns.get!string);
       }
     }
 
@@ -180,7 +180,7 @@ class NetworkService {
   void listSecurityGroups(HTTPServerRequest req, HTTPServerResponse res) {
     auto tenantId = getTenantIdFromRequest(req);
 
-    Json[] sgList = securityGroups.filter!(sg => sg.tenantId == tenantId).map!(sg => sg.toJson).array;
+    Json[] sgList = securityGroups.values.filter!(sg => sg.tenantId == tenantId).map!(sg => sg.toJson).array;
     res.writeJsonBody(["securityGroups": sgList]);
   }
 

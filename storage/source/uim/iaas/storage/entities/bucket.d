@@ -71,4 +71,15 @@ class BucketEntity : IaasEntity {
   @property void status(string value) {
     _status = value;
   }
+
+  override Json toJson() {
+    return super.toJson.update([
+      "name": _name.toJson,
+      "tenantId": _tenantId.toJson,
+      "region": _region.toJson,
+      "objectCount": _objectCount.toJson,
+      "totalSizeBytes": _totalSizeBytes.toJson,
+      "status": _status.toJson
+    ]);
+  }
 }

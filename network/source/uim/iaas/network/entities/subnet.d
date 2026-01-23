@@ -70,8 +70,12 @@ class SubnetEntity : IaasEntity {
     _dnsServers = value;
   }
 
-  Json toJson() {
-    return super.toJson().update([
+  void addDnsServer(string dns) {
+    _dnsServers ~= dns;
+  }
+
+  override Json toJson() {
+    return super.toJson.update([
       "name": _name.toJson,
       "tenantId": _tenantId.toJson,
       "networkId": _networkId.toJson,
@@ -81,3 +85,4 @@ class SubnetEntity : IaasEntity {
       "dnsServers": _dnsServers.toJson
     ]);
   }
+}
