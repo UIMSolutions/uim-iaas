@@ -104,26 +104,44 @@ class ApiGateway {
             }
             
             requestHTTP(targetUrl ~ req.requestPath.toString(),
-                (scope clientReq) {
+                (scope HTTPClientRequest clientReq) {
                     clientReq.method = req.method;
                     // Copy headers
-                    foreach (k; req.headers.keys) {
-                        clientReq.headers[k] = req.headers[k];
+                    foreach (k; req.headers.byKeyValue) {
+                        clientReq.headers[k.key] = k.value;
                     }
                     // Add tenant ID header for backend services
                     clientReq.headers["X-Tenant-ID"] = tenantId;
                     
-                    if (!req.bodyReader.empty) {
-                        clientReq.writeBody(cast(ubyte[])req.json.toString());
+                    // Write request body if present
+                    if (req.method == HTTPMethod.POST || req.method == HTTPMethod.PUT || req.method == HTTPMethod.PATCH) {
+                        try {
+                            auto jsonBody = req.json;
+                            clientReq.writeJsonBody(jsonBody);
+                        } catch (Exception) {
+                            // No JSON body
+                        }
                     }
                 },
-                (scope clientRes) {
+                (scope HTTPClientResponse clientRes) {
                     res.statusCode = clientRes.statusCode;
                     // Copy response headers
-                    foreach (k; clientRes.headers.keys) {
-                        res.headers[k] = clientRes.headers[k];
+                    foreach (k; clientRes.headers.byKeyValue) {
+                        res.headers[k.key] = k.value;
                     }
-                    res.bodyWriter.write(clientRes.bodyReader);
+                    // Copy response body
+                    try {
+                        auto jsonBody = clientRes.readJson();
+                        res.writeJsonBody(jsonBody);
+                    } catch (Exception) {
+                        // Not JSON, try raw body
+                        try {
+                            auto bodyContent = clientRes.bodyReader.readAllUTF8();
+                            res.writeBody(bodyContent);
+                        } catch (Exception) {
+                            // Empty body
+                        }
+                    }
                 }
             );
         } catch (Exception e) {
