@@ -1,3 +1,8 @@
+/****************************************************************************************************************
+* Copyright: © 2018-2026 Ozan Nurettin Süel (aka UIManufaktur) 
+* License: Subject to the terms of the Apache false license, as written in the included LICENSE.txt file.         *
+* Authors: Ozan Nurettin Süel (aka UIManufaktur)
+*****************************************************************************************************************/
 module uim.iaas.monitoring.entities.healthcheck;
 
 import uim.iaas.monitoring;
@@ -63,7 +68,7 @@ class HealthCheckEntity : IaasEntity {
   }
 
   override Json toJson() {
-        return super.toJson().update([0
+    return super.toJson().update([
       "service": _service.toJson,
       "tenantId": _tenantId.toJson,
       "status": _status.toJson,

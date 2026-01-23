@@ -1,3 +1,8 @@
+/****************************************************************************************************************
+* Copyright: © 2018-2026 Ozan Nurettin Süel (aka UIManufaktur) 
+* License: Subject to the terms of the Apache false license, as written in the included LICENSE.txt file.         *
+* Authors: Ozan Nurettin Süel (aka UIManufaktur)
+*****************************************************************************************************************/
 module uim.iaas.monitoring.services.monitoring;
 
 import uim.iaas.monitoring;
@@ -60,7 +65,7 @@ class MonitoringService {
 
         Json[] metricList;
         foreach (metric; filtered) {
-            metricList ~= serializeMetric(metric);
+            metricList ~= metric.toJson;
         }
 
         res.writeJsonBody([
@@ -94,7 +99,7 @@ class MonitoringService {
         }
 
         res.statusCode = HTTPStatus.created;
-        res.writeJsonBody(serializeMetric(metric));
+        res.writeJsonBody(metric.toJson);
     }
 
     void getMetricsByName(HTTPServerRequest req, HTTPServerResponse res) {
@@ -105,7 +110,7 @@ class MonitoringService {
 
         Json[] metricList;
         foreach (metric; filtered) {
-            metricList ~= serializeMetric(metric);
+            metricList ~= metric.toJson;
         }
 
         // Calculate aggregations
@@ -154,7 +159,7 @@ class MonitoringService {
         Json[] alertList;
         foreach (alert; alerts) {
             if (alert.tenantId == tenantId && (!activeOnly || alert.active)) {
-                alertList ~= serializeAlert(alert);
+                alertList ~= alert.toJson;
             }
         }
 
@@ -169,7 +174,7 @@ class MonitoringService {
             return;
         }
 
-        res.writeJsonBody(serializeAlert(alerts[id]));
+        res.writeJsonBody(alerts[id].toJson);
     }
 
     void createAlert(HTTPServerRequest req, HTTPServerResponse res) {
@@ -192,7 +197,7 @@ class MonitoringService {
         alerts[alert.id] = alert;
 
         res.statusCode = HTTPStatus.created;
-        res.writeJsonBody(serializeAlert(alert));
+        res.writeJsonBody(alert.toJson);
     }
 
     void resolveAlert(HTTPServerRequest req, HTTPServerResponse res) {
@@ -206,7 +211,7 @@ class MonitoringService {
         alerts[id].active = false;
         alerts[id].resolvedAt = Clock.currTime().toUnixTime();
 
-        res.writeJsonBody(serializeAlert(alerts[id]));
+        res.writeJsonBody(alerts[id].toJson);
     }
 
     void listHealthChecks(HTTPServerRequest req, HTTPServerResponse res) {
@@ -215,7 +220,7 @@ class MonitoringService {
         Json[] healthList;
         foreach (health; healthChecks) {
             if (health.tenantId == tenantId) {
-                healthList ~= serializeHealthCheck(health);
+                healthList ~= health.toJson;
             }
         }
 
@@ -237,7 +242,7 @@ class MonitoringService {
         healthChecks[health.service] = health;
 
         res.statusCode = HTTPStatus.created;
-        res.writeJsonBody(serializeHealthCheck(health));
+        res.writeJsonBody(health.toJson);
     }
 
     void getDashboard(HTTPServerRequest req, HTTPServerResponse res) {

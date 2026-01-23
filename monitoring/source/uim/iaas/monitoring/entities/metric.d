@@ -1,3 +1,8 @@
+/****************************************************************************************************************
+* Copyright: © 2018-2026 Ozan Nurettin Süel (aka UIManufaktur) 
+* License: Subject to the terms of the Apache false license, as written in the included LICENSE.txt file.         *
+* Authors: Ozan Nurettin Süel (aka UIManufaktur)
+*****************************************************************************************************************/
 module uim.iaas.monitoring.entities.metric;
 
 import uim.iaas.monitoring;
@@ -80,14 +85,14 @@ class MetricEntity : IaasEntity {
   }
 
   override Json toJson() {
-    return super().toJson().update([
+    return super.toJson().update([
       "metadata": _metadata.toJson,
       "name": _name.toJson,
       "tenantId": _tenantId.toJson,
       "type": _type.toJson,
-      "value": Json(_value),
-      "labels": Json(_labels),
-      "timestamp": Json(_timestamp)
+      "value": _value.toJson,
+      "labels": _labels.toJson,
+      "timestamp": _timestamp.toJson
     ]);
   }
 }
