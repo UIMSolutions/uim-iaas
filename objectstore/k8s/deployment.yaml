@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: objectstore-service
+  namespace: objectstore
+  labels:
+    app: objectstore
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: objectstore
+  template:
+    metadata:
+      labels:
+        app: objectstore
+        version: v1
+    spec:
+      containers:
+      - name: objectstore
+        image: objectstore-service:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        env:
+        - name: PORT
+          valueFrom:
+            configMapKeyRef:
+              name: objectstore-config
+              key: PORT
+        - name: STORAGE_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: objectstore-config
+              key: STORAGE_PATH
+        - name: METADATA_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: objectstore-config
+              key: METADATA_PATH
+        - name: ENABLE_AUTH
+          valueFrom:
+            configMapKeyRef:
+              name: objectstore-config
+              key: ENABLE_AUTH
+        - name: MAX_OBJECT_SIZE
+          valueFrom:
+            configMapKeyRef:
+              name: objectstore-config
+              key: MAX_OBJECT_SIZE
+        - name: AUTH_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: objectstore-secret
+              key: AUTH_TOKEN
+        volumeMounts:
+        - name: storage
+          mountPath: /app/data
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+      volumes:
+      - name: storage
+        persistentVolumeClaim:
+          claimName: objectstore-pvc
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+        runAsNonRoot: true

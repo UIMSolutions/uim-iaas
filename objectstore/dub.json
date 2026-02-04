@@ -1,0 +1,19 @@
+{
+    "name": "objectstore-service",
+    "description": "Cloud-native object storage service with vibe.d for Kubernetes",
+    "authors": ["Object Store Team"],
+    "copyright": "Copyright © 2026",
+    "license": "MIT",
+    "targetType": "executable",
+    "targetPath": "bin",
+    "mainSourceFile": "source/app.d",
+    "dependencies": {
+        "vibe-d": "~>0.9.7"
+    },
+    "versions": ["VibeDefaultMain"],
+    "buildTypes": {
+        "release": {
+            "buildOptions": ["releaseMode", "optimize", "inline"]
+        }
+    }
+}

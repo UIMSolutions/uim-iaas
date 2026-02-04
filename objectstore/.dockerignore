@@ -1,0 +1,14 @@
+.dockerignore
+.git/
+.gitignore
+*.md
+README.md
+LICENSE
+k8s/
+deploy.sh
+.dub/
+bin/
+data/
+*.log
+.vscode/
+.idea/

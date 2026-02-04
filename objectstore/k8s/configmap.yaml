@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: objectstore-config
+  namespace: objectstore
+data:
+  PORT: "8080"
+  STORAGE_PATH: "/app/data/storage"
+  METADATA_PATH: "/app/data/metadata"
+  ENABLE_AUTH: "true"
+  MAX_OBJECT_SIZE: "5368709120" # 5GB
